@@ -1,0 +1,175 @@
+<div class="chat-layout" [class.sidebar-collapsed]="!sidebarOpen">
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar" [class.open]="sidebarOpen">
+    <div class="sidebar-top">
+      <div class="brand">
+        <span class="brand-icon">🛡️</span>
+        <span class="brand-name">CyberChat</span>
+      </div>
+      <button class="icon-btn close-sidebar" (click)="toggleSidebar()" title="Close sidebar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+    </div>
+
+    <button class="new-chat-btn" (click)="startNewChat()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      <span>New chat</span>
+    </button>
+
+    <div class="sessions-list">
+      <ng-container *ngIf="chatSessions.length > 0">
+        <div class="sessions-label">Recent conversations</div>
+        <div *ngFor="let session of chatSessions; trackBy: trackBySessionId"
+             class="session-item"
+             [class.active]="session.id === currentSessionId"
+             (click)="loadSession(session.id)">
+          <div class="session-info">
+            <div class="session-title">{{ session.title }}</div>
+            <div class="session-meta">{{ getTimeLabel(session) }}</div>
+          </div>
+          <button class="session-delete" (click)="deleteSession(session.id, $event)" title="Delete">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+          </button>
+        </div>
+      </ng-container>
+      <div *ngIf="chatSessions.length === 0" class="sessions-empty">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span>No conversations yet</span>
+      </div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="user-card">
+        <div class="user-avatar">{{ getInitial() }}</div>
+        <div class="user-meta">
+          <div class="user-name">{{ username }}</div>
+          <div class="user-role">Cybersecurity User</div>
+        </div>
+        <button class="icon-btn logout-btn" (click)="logout()" title="Sign out">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN CHAT ===== -->
+  <main class="chat-main">
+    <!-- Header -->
+    <header class="chat-header">
+      <button class="icon-btn open-sidebar" *ngIf="!sidebarOpen" (click)="toggleSidebar()" title="Open sidebar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <div class="header-title">
+        <svg class="header-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Cybersecurity Assistant</span>
+      </div>
+      <div class="header-status" *ngIf="isLoading">
+        <span class="status-dot"></span> Thinking...
+      </div>
+    </header>
+
+    <!-- Messages -->
+    <div class="messages-area" #messagesContainer>
+      <!-- WELCOME SCREEN -->
+      <div *ngIf="messages.length === 0 && !isLoading" class="welcome-screen">
+        <div class="welcome-icon">🛡️</div>
+        <h1 class="welcome-title">Hello, {{ username }}</h1>
+        <p class="welcome-sub">I'm your cybersecurity intelligence assistant. Ask me about threats, vulnerabilities, defenses, or best practices.</p>
+
+        <div class="quick-grid">
+          <button class="quick-card" (click)="quickAsk('What are the most critical cybersecurity threats right now?')">
+            <div class="quick-card-icon">⚡</div>
+            <div class="quick-card-text">
+              <div class="quick-card-title">Latest threats</div>
+              <div class="quick-card-desc">Current critical vulnerabilities</div>
+            </div>
+          </button>
+          <button class="quick-card" (click)="quickAsk('How can I protect my organization from phishing attacks?')">
+            <div class="quick-card-icon">🎣</div>
+            <div class="quick-card-text">
+              <div class="quick-card-title">Phishing defense</div>
+              <div class="quick-card-desc">Prevention strategies & tools</div>
+            </div>
+          </button>
+          <button class="quick-card" (click)="quickAsk('Explain zero-trust security architecture and how to implement it')">
+            <div class="quick-card-icon">🏗️</div>
+            <div class="quick-card-text">
+              <div class="quick-card-title">Zero-trust model</div>
+              <div class="quick-card-desc">Architecture & implementation</div>
+            </div>
+          </button>
+          <button class="quick-card" (click)="quickAsk('What are the steps for an effective incident response plan?')">
+            <div class="quick-card-icon">🚨</div>
+            <div class="quick-card-text">
+              <div class="quick-card-title">Incident response</div>
+              <div class="quick-card-desc">Response plan essentials</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- MESSAGE LIST -->
+      <div class="message-list" *ngIf="messages.length > 0">
+        <div *ngFor="let msg of messages; trackBy: trackByMessageId"
+             class="message-row"
+             [class.user-row]="msg.sender === 'user'"
+             [class.assistant-row]="msg.sender === 'assistant'">
+
+          <!-- Avatar -->
+          <div class="msg-avatar" *ngIf="msg.sender === 'assistant'">
+            <span class="avatar-ai">AI</span>
+          </div>
+
+          <!-- Bubble -->
+          <div class="msg-bubble" [class.user-bubble]="msg.sender === 'user'" [class.ai-bubble]="msg.sender === 'assistant'">
+            <div class="msg-text" *ngIf="msg.text && msg.sender === 'user'">{{ msg.text }}</div>
+            <div class="msg-text markdown-body" *ngIf="msg.text && msg.sender === 'assistant'" [innerHTML]="renderMarkdown(msg.text)"></div>
+            <div class="msg-typing" *ngIf="!msg.text && msg.sender === 'assistant'">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+          </div>
+
+          <!-- User avatar -->
+          <div class="msg-avatar" *ngIf="msg.sender === 'user'">
+            <span class="avatar-user">{{ getInitial() }}</span>
+          </div>
+        </div>
+
+        <!-- Streaming typing indicator -->
+        <div *ngIf="isLoading && messages.length > 0 && messages[messages.length - 1].text !== ''" class="message-row assistant-row">
+          <div class="msg-avatar"><span class="avatar-ai">AI</span></div>
+          <div class="msg-bubble ai-bubble">
+            <div class="msg-typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+      <div class="input-wrapper">
+        <div class="input-box">
+          <textarea #messageInput
+                    class="chat-input"
+                    placeholder="Ask about cybersecurity..."
+                    [(ngModel)]="userInput"
+                    (keydown)="onKeydown($event)"
+                    (input)="autoResize($event)"
+                    [disabled]="isLoading"
+                    rows="1"></textarea>
+          <button class="send-btn"
+                  (click)="sendMessage()"
+                  [disabled]="isLoading || !userInput.trim()"
+                  [class.active]="userInput.trim().length > 0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="input-hint">
+          <span>Press <kbd>Enter</kbd> to send, <kbd>Shift+Enter</kbd> for new line</span>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

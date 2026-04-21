@@ -1,0 +1,47 @@
+<section class="activity-page">
+  <header class="activity-header">
+    <div>
+      <p class="eyebrow">Audit and Monitoring</p>
+      <h2>Security Activity Timeline</h2>
+      <p>Track privileged actions, failed access attempts, and policy-impacting events.</p>
+    </div>
+    <button type="button" class="primary" (click)="exportActivities()">Export Timeline</button>
+  </header>
+
+  <div class="filters">
+    <div class="filter-group">
+      <span>Outcome</span>
+      <button type="button" [class.active]="selectedOutcome === 'all'" (click)="setOutcomeFilter('all')">All</button>
+      <button type="button" [class.active]="selectedOutcome === 'success'" (click)="setOutcomeFilter('success')">Success</button>
+      <button type="button" [class.active]="selectedOutcome === 'warning'" (click)="setOutcomeFilter('warning')">Warning</button>
+      <button type="button" [class.active]="selectedOutcome === 'failed'" (click)="setOutcomeFilter('failed')">Failed</button>
+    </div>
+
+    <div class="filter-group">
+      <span>Severity</span>
+      <button type="button" [class.active]="selectedSeverity === 'all'" (click)="setSeverityFilter('all')">All</button>
+      <button type="button" [class.active]="selectedSeverity === 'low'" (click)="setSeverityFilter('low')">Low</button>
+      <button type="button" [class.active]="selectedSeverity === 'medium'" (click)="setSeverityFilter('medium')">Medium</button>
+      <button type="button" [class.active]="selectedSeverity === 'high'" (click)="setSeverityFilter('high')">High</button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="state">Loading activity timeline...</div>
+
+  <div *ngIf="!loading" class="timeline">
+    <article *ngFor="let item of filteredActivities" class="event" [class.high]="item.severity === 'high'" [class.failed]="item.outcome === 'failed'">
+      <div class="event-head">
+        <p class="event-title">{{ item.event }}</p>
+        <div class="labels">
+          <span class="badge" [class.success]="item.outcome === 'success'" [class.warning]="item.outcome === 'warning'" [class.failed]="item.outcome === 'failed'">{{ item.outcome }}</span>
+          <span class="badge severity" [class.high]="item.severity === 'high'" [class.medium]="item.severity === 'medium'">{{ item.severity }}</span>
+        </div>
+      </div>
+
+      <p class="event-meta">Actor: <strong>{{ item.actor }}</strong> | Target: <strong>{{ item.target }}</strong></p>
+      <p class="event-meta">Time: {{ item.time }} | Source IP: {{ item.sourceIp }}</p>
+    </article>
+
+    <div *ngIf="filteredActivities.length === 0" class="state">No events match selected filters.</div>
+  </div>
+</section>

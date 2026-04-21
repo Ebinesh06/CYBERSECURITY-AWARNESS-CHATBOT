@@ -1,0 +1,116 @@
+.settings-page {
+  display: grid;
+  gap: 14px;
+}
+
+header h2 {
+  margin: 4px 0;
+  font-size: 24px;
+  color: #edf3ff;
+}
+
+header p {
+  margin: 0;
+  color: #9eb2df;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #89a4da;
+}
+
+.saved {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(71, 222, 160, 0.4);
+  border-radius: 10px;
+  color: #bff8e2;
+  background: rgba(8, 95, 71, 0.36);
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.card {
+  border: 1px solid rgba(128, 155, 240, 0.2);
+  border-radius: 12px;
+  background: rgba(11, 21, 45, 0.7);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.card h3 {
+  margin: 0;
+  color: #edf3ff;
+  font-size: 16px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #c9d9fb;
+}
+
+input,
+textarea {
+  border: 1px solid rgba(128, 155, 241, 0.3);
+  border-radius: 10px;
+  background: rgba(12, 23, 50, 0.75);
+  color: #e4efff;
+  padding: 8px 10px;
+  font-family: inherit;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.switch-row input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+}
+
+.actions button {
+  border-radius: 10px;
+  border: 1px solid rgba(127, 154, 231, 0.33);
+  padding: 9px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actions .primary {
+  background: rgba(29, 66, 165, 0.75);
+  color: #e4efff;
+}
+
+.actions .secondary {
+  background: rgba(20, 32, 59, 0.75);
+  color: #c9d8f9;
+}
+
+@media (max-width: 960px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+}

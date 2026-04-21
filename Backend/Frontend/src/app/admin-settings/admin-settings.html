@@ -1,0 +1,72 @@
+<section class="settings-page">
+  <header>
+    <p class="eyebrow">Policy Management</p>
+    <h2>Admin Security Controls</h2>
+    <p>Set baseline controls for privileged access, lockouts, and session governance.</p>
+  </header>
+
+  <p class="saved" *ngIf="savedMessage">{{ savedMessage }}</p>
+
+  <form class="settings-grid" (ngSubmit)="saveSettings()">
+    <article class="card">
+      <h3>Session and Lockout</h3>
+      <label>
+        Session timeout (minutes)
+        <input type="number" min="1" max="120" [(ngModel)]="settings.sessionTimeoutMinutes" name="sessionTimeoutMinutes" />
+      </label>
+      <label>
+        Max login attempts
+        <input type="number" min="1" max="20" [(ngModel)]="settings.maxLoginAttempts" name="maxLoginAttempts" />
+      </label>
+      <label>
+        Lockout duration (minutes)
+        <input type="number" min="1" max="240" [(ngModel)]="settings.lockoutDurationMinutes" name="lockoutDurationMinutes" />
+      </label>
+    </article>
+
+    <article class="card">
+      <h3>Credential Standards</h3>
+      <label>
+        Password minimum length
+        <input type="number" min="8" max="24" [(ngModel)]="settings.passwordMinLength" name="passwordMinLength" />
+      </label>
+      <label class="switch-row">
+        <input type="checkbox" [(ngModel)]="settings.requirePasswordSymbols" name="requirePasswordSymbols" />
+        Require symbols in passwords
+      </label>
+      <label class="switch-row">
+        <input type="checkbox" [(ngModel)]="settings.enforceMfaForAdmin" name="enforceMfaForAdmin" />
+        Enforce MFA for all admin accounts
+      </label>
+    </article>
+
+    <article class="card">
+      <h3>Network Restrictions</h3>
+      <label class="switch-row">
+        <input type="checkbox" [(ngModel)]="settings.enableIpAllowlist" name="enableIpAllowlist" />
+        Restrict admin access to IP allowlist
+      </label>
+      <label>
+        Allowed CIDRs / IPs (comma separated)
+        <textarea rows="4" [(ngModel)]="settings.ipAllowlist" name="ipAllowlist" placeholder="203.0.113.10, 10.24.0.0/16"></textarea>
+      </label>
+    </article>
+
+    <article class="card">
+      <h3>Operational Safety</h3>
+      <label class="switch-row">
+        <input type="checkbox" [(ngModel)]="settings.alertOnFailedLogins" name="alertOnFailedLogins" />
+        Alert on repeated failed admin logins
+      </label>
+      <label class="switch-row">
+        <input type="checkbox" [(ngModel)]="settings.maintenanceMode" name="maintenanceMode" />
+        Maintenance mode (admins only)
+      </label>
+    </article>
+
+    <div class="actions">
+      <button type="submit" class="primary">Save Security Policy</button>
+      <button type="button" class="secondary" (click)="resetToDefaults()">Reset to Defaults</button>
+    </div>
+  </form>
+</section>

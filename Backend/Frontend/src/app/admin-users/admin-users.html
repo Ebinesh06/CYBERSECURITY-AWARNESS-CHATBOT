@@ -1,0 +1,71 @@
+<section class="users-page">
+  <header class="users-header">
+    <div>
+      <p class="eyebrow">Identity and Access</p>
+      <h2>User Governance</h2>
+      <p class="subtitle">Control account state, role scope, and privileged safeguards.</p>
+    </div>
+    <button type="button" class="primary-btn">Invite Account</button>
+  </header>
+
+  <div class="controls">
+    <input
+      type="text"
+      [(ngModel)]="searchQuery"
+      (input)="applyFilters()"
+      placeholder="Search username or email"
+    />
+
+    <select [ngModel]="roleFilter" (ngModelChange)="updateRoleFilter($event)">
+      <option value="all">All roles</option>
+      <option value="admin">Admin</option>
+      <option value="analyst">Analyst</option>
+      <option value="user">User</option>
+    </select>
+
+    <select [ngModel]="statusFilter" (ngModelChange)="updateStatusFilter($event)">
+      <option value="all">All statuses</option>
+      <option value="active">Active</option>
+      <option value="pending">Pending</option>
+      <option value="suspended">Suspended</option>
+    </select>
+  </div>
+
+  <div *ngIf="loading" class="state-card">Loading user registry...</div>
+  <div *ngIf="error" class="state-card error">{{ error }}</div>
+
+  <div *ngIf="!loading" class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Identity</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Security Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of filteredUsers">
+          <td>
+            <p class="cell-main">{{ user.username }}</p>
+          </td>
+          <td>
+            <span class="badge" [class.admin]="user.role === 'admin'" [class.analyst]="user.role === 'analyst'">{{ user.role }}</span>
+          </td>
+          <td>
+            <span class="badge" [class.active]="user.status === 'active'" [class.pending]="user.status === 'pending'" [class.suspended]="user.status === 'suspended'">{{ user.status }}</span>
+          </td>
+          <td>
+            <div class="actions">
+              <button type="button" (click)="toggleUserStatus(user)">Toggle Status</button>
+              <button type="button" (click)="rotateCredentials(user)">Rotate Credentials</button>
+              <button type="button" class="danger" (click)="deleteUser(user.id)">Delete</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div *ngIf="filteredUsers.length === 0" class="state-card">No users match current filters.</div>
+  </div>
+</section>

@@ -1,0 +1,191 @@
+<div class="login-root">
+  <!-- Animated background grid -->
+  <div class="bg-grid"></div>
+
+  <div class="login-layout">
+
+    <!-- ═══ LEFT PANEL ═══ -->
+    <div class="left-panel">
+      <div class="brand">
+        <div class="brand-icon">
+          <span class="shield-core">🛡️</span>
+          <div class="pulse-ring"></div>
+        </div>
+        <h1 class="brand-name">CyberAdmin</h1>
+        <p class="brand-tagline">Security Operations Center</p>
+      </div>
+
+      <div class="status-grid">
+        <div class="status-card">
+          <div class="status-dot green"></div>
+          <div class="status-info">
+            <span class="status-label">Threat Detection</span>
+            <span class="status-value">ACTIVE</span>
+          </div>
+        </div>
+        <div class="status-card">
+          <div class="status-dot green"></div>
+          <div class="status-info">
+            <span class="status-label">Firewall</span>
+            <span class="status-value">ONLINE</span>
+          </div>
+        </div>
+        <div class="status-card">
+          <div class="status-dot amber"></div>
+          <div class="status-info">
+            <span class="status-label">Audit Log</span>
+            <span class="status-value">RECORDING</span>
+          </div>
+        </div>
+        <div class="status-card">
+          <div class="status-dot green"></div>
+          <div class="status-info">
+            <span class="status-label">Encryption</span>
+            <span class="status-value">AES-256</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="capabilities">
+        <div class="cap-item">
+          <span class="cap-icon">📊</span>
+          <div>
+            <p class="cap-title">Real-Time Dashboard</p>
+            <p class="cap-desc">KPIs, threat watchlist and compliance status</p>
+          </div>
+        </div>
+        <div class="cap-item">
+          <span class="cap-icon">👥</span>
+          <div>
+            <p class="cap-title">User Access Control</p>
+            <p class="cap-desc">Roles, MFA enforcement, credential rotation</p>
+          </div>
+        </div>
+        <div class="cap-item">
+          <span class="cap-icon">🔍</span>
+          <div>
+            <p class="cap-title">Audit & Activity Logs</p>
+            <p class="cap-desc">Full event timeline with severity filters</p>
+          </div>
+        </div>
+        <div class="cap-item">
+          <span class="cap-icon">⚙️</span>
+          <div>
+            <p class="cap-title">Security Policy Engine</p>
+            <p class="cap-desc">Lockout, session, IP allowlist and MFA rules</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="left-footer">
+        <span>© {{ currentYear }} CyberAdmin SOC Platform</span>
+      </div>
+    </div>
+
+    <!-- ═══ RIGHT PANEL ═══ -->
+    <div class="right-panel">
+      <div class="form-card">
+
+        <!-- Header -->
+        <div class="form-header">
+          <div class="lock-badge">🔐</div>
+          <h2>Admin Authentication</h2>
+          <p class="form-subtitle">Restricted access — authorised personnel only</p>
+        </div>
+
+        <!-- Session expiry / logout reason banner -->
+        <div *ngIf="sessionMessage" class="info-banner">
+          <span>🕐</span>
+          <span>{{ sessionMessage }}</span>
+        </div>
+
+        <!-- Error alert -->
+        <div *ngIf="errorMessage" class="error-banner" [class.locked]="isLockedOut">
+          <span>{{ isLockedOut ? '🔒' : '⚠️' }}</span>
+          <span>{{ errorMessage }}</span>
+          <span *ngIf="isLockedOut" class="countdown">{{ lockoutCountdown }}s</span>
+        </div>
+
+        <!-- Attempt risk bar (shows after first failure) -->
+        <div *ngIf="failedAttempts > 0 && !isLockedOut" class="risk-bar-wrap">
+          <div class="risk-bar-label">
+            <span>Login Risk</span>
+            <span>{{ failedAttempts }}/5 failed attempts</span>
+          </div>
+          <div class="risk-bar-track">
+            <div class="risk-bar-fill"
+                 [style.width.%]="attemptsBarWidth"
+                 [style.background]="attemptsBarColor">
+            </div>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <form (ngSubmit)="login()" class="login-form" autocomplete="off">
+
+          <div class="field-group">
+            <label for="adm-user">Username</label>
+            <div class="input-wrap">
+              <span class="input-prefix">👤</span>
+              <input
+                id="adm-user"
+                type="text"
+                placeholder="Enter admin username"
+                [(ngModel)]="username"
+                name="username"
+                [disabled]="isLoading || isLockedOut"
+                autocomplete="username"
+                spellcheck="false">
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="adm-pass">Password</label>
+            <div class="input-wrap">
+              <span class="input-prefix">🔑</span>
+              <input
+                id="adm-pass"
+                [type]="showPassword ? 'text' : 'password'"
+                placeholder="••••••••••••"
+                [(ngModel)]="password"
+                name="password"
+                [disabled]="isLoading || isLockedOut"
+                (keyup.enter)="login()"
+                autocomplete="current-password">
+              <button type="button" class="toggle-vis" (click)="togglePassword()" tabindex="-1">
+                {{ showPassword ? '🙈' : '👁️' }}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            class="submit-btn"
+            [disabled]="isLoading || isLockedOut">
+            <span *ngIf="!isLoading && !isLockedOut">
+              <span class="btn-icon">→</span> Authenticate
+            </span>
+            <span *ngIf="isLoading" class="spinner-wrap">
+              <span class="spinner"></span> Verifying identity…
+            </span>
+            <span *ngIf="isLockedOut">
+              🔒 Locked — wait {{ lockoutCountdown }}s
+            </span>
+          </button>
+
+        </form>
+
+        <!-- Footer links -->
+        <div class="form-footer">
+          <a routerLink="/user-login">← Back to User Portal</a>
+          <span class="divider">|</span>
+          <span class="secure-tag">🔒 TLS encrypted</span>
+        </div>
+
+      </div>
+
+      <p class="audit-notice">All authentication attempts are logged and monitored.</p>
+    </div>
+
+  </div>
+</div>

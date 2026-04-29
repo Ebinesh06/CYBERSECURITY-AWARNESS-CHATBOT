@@ -7,86 +7,276 @@
       <p>Intelligence at your fingertips</p>
     </div>
 
-    <!-- Login Form -->
+    <!-- Session Messages -->
+    <div *ngIf="sessionMessage" class="info-banner">
+      <span>🕐</span>
+      <span>{{ sessionMessage }}</span>
+    </div>
+    <div *ngIf="sessionWarning" class="warning-banner">
+      <span>⏰</span>
+      <span>Your session will expire in {{ (SESSION_TIMEOUT_MS - (Date.now() % SESSION_TIMEOUT_MS)) / 1000 | number:'1.0-0' }} seconds</span>
+    </div>
+
+    <!-- Form Section -->
     <div class="form-section">
-      <div class="form-header">
+      <!-- Login/Signup Tabs (not shown during MFA flow) -->
+      <div *ngIf="!mfaRequired && !showMfaSetup" class="form-header">
         <button 
           class="form-tab" 
           [class.active]="!isSignUp"
-          (click)="isSignUp = false">
+          (click)="toggleSignUp(); errorMessage = ''"
+          [disabled]="isLockedOut">
           Sign In
         </button>
         <button 
           class="form-tab" 
           [class.active]="isSignUp"
-          (click)="isSignUp = true">
+          (click)="toggleSignUp(); errorMessage = ''"
+          [disabled]="isLockedOut">
           Sign Up
         </button>
       </div>
 
+      <!-- Lockout Banner -->
+      <div *ngIf="isLockedOut" class="error-banner">
+        <span>🔒</span>
+        <span>Account locked. Try again in {{ lockoutCountdown }}s</span>
+      </div>
+
       <!-- Error Message -->
-      <div *ngIf="errorMessage" class="error-message">
+      <div *ngIf="errorMessage && !isLockedOut" class="error-message">
         {{ errorMessage }}
       </div>
 
-      <!-- Sign In Form -->
-      <div *ngIf="!isSignUp" class="form-content">
+      <!-- Attempts Progress Bar -->
+      <div *ngIf="failedAttempts > 0 && !isLockedOut && !mfaRequired && !showMfaSetup" class="attempts-container">
+        <div class="attempts-bar" [style.width.%]="attemptsBarWidth" [style.backgroundColor]="attemptsBarColor"></div>
+      </div>
+      <div *ngIf="failedAttempts > 0 && !isLockedOut && !mfaRequired && !showMfaSetup" class="attempts-text">
+        {{ failedAttempts }}/5 failed attempts
+      </div>
+
+      <!-- ===== SIGN IN FORM ===== -->
+      <div *ngIf="!isSignUp && !mfaRequired && !showMfaSetup" class="form-content">
         <div class="form-group">
+          <label for="username-signin">Username</label>
           <input 
+            id="username-signin"
             type="text"
             placeholder="Username"
             class="input-field"
             [(ngModel)]="username"
             (keyup.enter)="login()"
-            [disabled]="isLoading">
+            [disabled]="isLoading || isLockedOut">
         </div>
-        <div class="form-group">
-          <input 
-            type="password"
-            placeholder="Password"
-            class="input-field"
-            [(ngModel)]="password"
-            (keyup.enter)="login()"
-            [disabled]="isLoading">
+        <div class="form-group password-group">
+          <label for="password-signin">Password</label>
+          <div class="password-input-wrapper">
+            <input 
+              id="password-signin"
+              [type]="showPassword ? 'text' : 'password'"
+              placeholder="Password (min 12 characters)"
+              class="input-field"
+              [(ngModel)]="password"
+              (keyup.enter)="login()"
+              [disabled]="isLoading || isLockedOut">
+            <button 
+              type="button"
+              class="toggle-password-btn"
+              (click)="togglePassword()"
+              [disabled]="isLoading || isLockedOut">
+              {{ showPassword ? '🙈' : '👁️' }}
+            </button>
+          </div>
         </div>
         <button 
           class="submit-btn"
           (click)="login()"
-          [disabled]="isLoading">
+          [disabled]="isLoading || isLockedOut">
           {{ isLoading ? 'Signing In...' : 'Sign In' }}
         </button>
       </div>
 
-      <!-- Sign Up Form -->
-      <div *ngIf="isSignUp" class="form-content">
+      <!-- ===== SIGN UP FORM ===== -->
+      <div *ngIf="isSignUp && !mfaRequired && !showMfaSetup" class="form-content">
         <div class="form-group">
+          <label for="username-signup">Username</label>
           <input 
+            id="username-signup"
             type="text"
             placeholder="Choose a username"
             class="input-field"
             [(ngModel)]="username"
-            [disabled]="isLoading">
+            [disabled]="isLoading || isLockedOut">
         </div>
-        <div class="form-group">
+        <div class="form-group password-group">
+          <label for="password-signup">
+            Password 
+            <span class="password-hint">(Enterprise Grade)</span>
+          </label>
+          <div class="password-input-wrapper">
+            <input 
+              id="password-signup"
+              [type]="showPassword ? 'text' : 'password'"
+              placeholder="12+ chars: A-Z, a-z, 0-9, special (!@#$%^&*)"
+              class="input-field"
+              [(ngModel)]="password"
+              (input)="updatePasswordStrength()"
+              [disabled]="isLoading || isLockedOut">
+            <button 
+              type="button"
+              class="toggle-password-btn"
+              (click)="togglePassword()"
+              [disabled]="isLoading || isLockedOut">
+              {{ showPassword ? '🙈' : '👁️' }}
+            </button>
+          </div>
+          <!-- Password Strength Indicator -->
+          <div class="password-strength-container">
+            <div class="password-strength-bar">
+              <div 
+                class="password-strength-fill" 
+                [style.width.%]="(passwordStrength / 5) * 100"
+                [style.backgroundColor]="passwordStrengthColor">
+              </div>
+            </div>
+            <span class="password-strength-label" [style.color]="passwordStrengthColor">
+              {{ passwordStrengthLabel }}
+            </span>
+          </div>
+        </div>
+
+        <!-- MFA Checkbox -->
+        <div class="mfa-setup-notice">
           <input 
-            type="password"
-            placeholder="Create a password"
-            class="input-field"
-            [(ngModel)]="password"
+            id="setup-mfa-checkbox"
+            type="checkbox"
+            [(ngModel)]="trustDevice"
             [disabled]="isLoading">
+          <label for="setup-mfa-checkbox">Setup Multi-Factor Authentication after signup</label>
         </div>
+
         <button 
           class="submit-btn"
           (click)="signUp()"
-          [disabled]="isLoading">
+          [disabled]="isLoading || isLockedOut || passwordStrength < 5">
           {{ isLoading ? 'Creating Account...' : 'Create Account' }}
+        </button>
+      </div>
+
+      <!-- ===== MFA VERIFICATION FLOW ===== -->
+      <div *ngIf="mfaRequired && !showMfaSetup" class="mfa-section">
+        <div class="mfa-header">
+          <span>🔐</span>
+          <h3>Multi-Factor Authentication</h3>
+          <p>Enter the 6-digit code from your authenticator app</p>
+        </div>
+
+        <div class="form-group">
+          <label for="mfa-code">Verification Code</label>
+          <input 
+            id="mfa-code"
+            type="text"
+            placeholder="000000"
+            maxlength="6"
+            class="mfa-input"
+            [(ngModel)]="mfaCode"
+            (keyup.enter)="verifyMfa()"
+            [disabled]="isLoading">
+        </div>
+
+        <!-- Trust Device Option -->
+        <div class="trust-device">
+          <input 
+            id="trust-device-checkbox"
+            type="checkbox"
+            [(ngModel)]="trustDevice"
+            [disabled]="isLoading">
+          <label for="trust-device-checkbox">Trust this device</label>
+          <input 
+            *ngIf="trustDevice"
+            type="text"
+            placeholder="Device name (e.g., My Laptop)"
+            class="device-name-input"
+            [(ngModel)]="deviceName"
+            [disabled]="isLoading">
+        </div>
+
+        <button 
+          class="submit-btn"
+          (click)="verifyMfa()"
+          [disabled]="isLoading || mfaCode.length !== 6">
+          {{ isLoading ? 'Verifying...' : 'Verify & Login' }}
+        </button>
+
+        <button 
+          class="back-btn"
+          (click)="backFromMfa()"
+          [disabled]="isLoading">
+          Back
+        </button>
+      </div>
+
+      <!-- ===== MFA SETUP FLOW ===== -->
+      <div *ngIf="showMfaSetup" class="mfa-setup-section">
+        <div class="mfa-header">
+          <span>🔐</span>
+          <h3>Enable Two-Factor Authentication</h3>
+        </div>
+
+        <!-- QR Code -->
+        <div *ngIf="qrCodeUrl" class="qr-container">
+          <img [src]="qrCodeUrl" alt="QR Code">
+          <p>Scan with authenticator app</p>
+        </div>
+
+        <!-- Manual Entry -->
+        <div class="secret-code-section">
+          <label>Or enter manually:</label>
+          <div class="secret-code">{{ mfaSecret }}</div>
+          <button 
+            type="button"
+            class="copy-btn"
+            (click)="copyToClipboard(mfaSecret)"
+            [disabled]="isLoading">
+            📋 Copy
+          </button>
+        </div>
+
+        <!-- Verification Code -->
+        <div class="form-group">
+          <label for="setup-mfa-code">Enter 6-digit code to confirm:</label>
+          <input 
+            id="setup-mfa-code"
+            type="text"
+            placeholder="000000"
+            maxlength="6"
+            class="mfa-input"
+            [(ngModel)]="setupMfaCode"
+            (keyup.enter)="confirmMfaSetup()"
+            [disabled]="isLoading">
+        </div>
+
+        <button 
+          class="submit-btn"
+          (click)="confirmMfaSetup()"
+          [disabled]="isLoading || setupMfaCode.length !== 6">
+          {{ isLoading ? 'Enabling...' : 'Enable MFA' }}
+        </button>
+
+        <button 
+          class="back-btn"
+          (click)="cancelMfaSetup()"
+          [disabled]="isLoading">
+          Cancel
         </button>
       </div>
     </div>
 
     <!-- Footer -->
     <div class="login-footer">
-      <p>Secure cybersecurity intelligence powered by AI</p>
+      <p>🔒 Enterprise-grade security with MFA, device fingerprinting, and real-time threat detection</p>
+      <p>© {{ currentYear }} CyberChat</p>
     </div>
   </div>
 </div>

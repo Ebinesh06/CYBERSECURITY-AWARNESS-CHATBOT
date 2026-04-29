@@ -43,6 +43,17 @@
   font-weight: 300;
 }
 
+.info-banner {
+  padding: 12px 32px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #bae6fd;
+}
+
 .form-section {
   padding: 32px;
 }
@@ -75,6 +86,31 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+.form-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-banner {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  color: #c33;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
 .error-message {
   padding: 12px 16px;
   margin-bottom: 16px;
@@ -84,6 +120,26 @@
   color: #c33;
   font-size: 0.9rem;
   line-height: 1.4;
+}
+
+.attempts-container {
+  height: 6px;
+  background: #e5e5ea;
+  border-radius: 3px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.attempts-bar {
+  height: 100%;
+  background: #22c55e;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.attempts-text {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 16px;
 }
 
 .form-content {
@@ -103,6 +159,24 @@
 
 .form-group {
   margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.password-group {
+  position: relative;
+}
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .input-field {
@@ -128,6 +202,27 @@
   cursor: not-allowed;
 }
 
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  border: none;
+  background: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  padding: 4px 8px;
+}
+
+.toggle-password-btn:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.toggle-password-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
 .submit-btn {
   width: 100%;
   padding: 12px 16px;
@@ -146,6 +241,25 @@
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-footer {
+  padding: 20px 32px;
+  text-align: center;
+  background: #f5f5f7;
+  border-top: 1px solid #e5e5ea;
+}
+
+.login-footer p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #666;
+  line-height: 1.4;
 }
 
 .submit-btn:active:not(:disabled) {
@@ -182,6 +296,249 @@
   color: #626262;
   font-size: 0.85rem;
   border-top: 1px solid #e5e5e7;
+}
+
+/* ===== PASSWORD STRENGTH STYLES ===== */
+.password-hint {
+  font-size: 0.75rem;
+  color: #667eea;
+  font-weight: normal;
+  margin-left: 4px;
+}
+
+.password-strength-container {
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+.password-strength-bar {
+  height: 4px;
+  background: #e5e5ea;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.password-strength-fill {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+  border-radius: 2px;
+}
+
+.password-strength-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: block;
+}
+
+.mfa-setup-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 12px;
+  background: #f0f4ff;
+  border-radius: 8px;
+  border-left: 3px solid #667eea;
+}
+
+.mfa-setup-notice input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.mfa-setup-notice label {
+  margin: 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+  flex: 1;
+}
+
+/* ===== MFA VERIFICATION STYLES ===== */
+.mfa-section {
+  animation: fadeIn 0.3s ease;
+}
+
+.mfa-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.mfa-header span {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.mfa-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.mfa-header p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.mfa-input {
+  font-family: 'Courier New', monospace;
+  font-size: 1.2rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+  font-weight: bold;
+}
+
+.trust-device {
+  margin: 16px 0;
+  padding: 12px;
+  background: rgba(96, 165, 250, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid #60a5fa;
+}
+
+.trust-device input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #60a5fa;
+  margin-right: 8px;
+}
+
+.trust-device label {
+  display: inline;
+  cursor: pointer;
+  margin: 0;
+  font-weight: 500;
+}
+
+.device-name-input {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid #60a5fa;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.device-name-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.back-btn {
+  width: 100%;
+  padding: 10px 16px;
+  margin-top: 12px;
+  background: transparent;
+  color: #667eea;
+  border: 1px solid #d5d5d7;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover:not(:disabled) {
+  background: #f5f5f7;
+  border-color: #667eea;
+}
+
+.back-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== MFA SETUP STYLES ===== */
+.mfa-setup-section {
+  animation: fadeIn 0.3s ease;
+}
+
+.qr-container {
+  text-align: center;
+  margin: 20px 0;
+  padding: 16px;
+  background: white;
+  border: 2px solid #e5e5ea;
+  border-radius: 12px;
+}
+
+.qr-container img {
+  width: 200px;
+  height: 200px;
+  display: block;
+  margin: 0 auto;
+}
+
+.qr-container p {
+  margin: 12px 0 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.secret-code-section {
+  margin: 16px 0;
+  padding: 12px;
+  background: #f5f5f7;
+  border-radius: 8px;
+}
+
+.secret-code-section label {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.secret-code {
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  color: #60a5fa;
+  word-break: break-all;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border: 1px solid #e5e5ea;
+}
+
+.copy-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  color: #60a5fa;
+  border: 1px solid #60a5fa;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.copy-btn:hover:not(:disabled) {
+  background: rgba(96, 165, 250, 0.1);
+}
+
+.copy-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.warning-banner {
+  padding: 12px 32px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #fcd34d;
 }
 
 .login-footer p {

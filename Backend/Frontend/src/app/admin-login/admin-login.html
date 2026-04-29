@@ -121,57 +121,186 @@
         </div>
 
         <!-- Form -->
-        <form (ngSubmit)="login()" class="login-form" autocomplete="off">
+        <form class="login-form" autocomplete="off">
 
-          <div class="field-group">
-            <label for="adm-user">Username</label>
-            <div class="input-wrap">
-              <span class="input-prefix">👤</span>
+          <!-- Test Credentials Info -->
+          <div class="credentials-info">
+            <strong>🧪 Test Credentials:</strong>
+            <p>Username: <code>admin</code></p>
+            <p>Password: <code>Admin@12345</code></p>
+          </div>
+
+          <!-- Login Step -->
+          <div *ngIf="!mfaRequired && !showMfaSetup" [@fadeIn]>
+            <div class="field-group">
+              <label for="adm-user">Username</label>
+              <div class="input-wrap">
+                <span class="input-prefix">👤</span>
+                <input
+                  id="adm-user"
+                  type="text"
+                  placeholder="Enter admin username"
+                  [(ngModel)]="username"
+                  name="username"
+                  [disabled]="isLoading || isLockedOut"
+                  autocomplete="username"
+                  spellcheck="false">
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label for="adm-pass">Password</label>
+              <div class="input-wrap">
+                <span class="input-prefix">🔑</span>
+                <input
+                  id="adm-pass"
+                  [type]="showPassword ? 'text' : 'password'"
+                  placeholder="••••••••••••"
+                  [(ngModel)]="password"
+                  name="password"
+                  [disabled]="isLoading || isLockedOut"
+                  (keyup.enter)="login()"
+                  autocomplete="current-password">
+                <button type="button" class="toggle-vis" (click)="togglePassword()" tabindex="-1">
+                  {{ showPassword ? '🙈' : '👁️' }}
+                </button>
+              </div>
+              <small class="password-hint">Min 12 characters: uppercase, lowercase, digit, special char</small>
+            </div>
+
+            <button
+              type="button"
+              class="submit-btn"
+              (click)="login()"
+              [disabled]="isLoading || isLockedOut">
+              <span *ngIf="!isLoading && !isLockedOut">
+                <span class="btn-icon">→</span> Authenticate
+              </span>
+              <span *ngIf="isLoading" class="spinner-wrap">
+                <span class="spinner"></span> Verifying identity…
+              </span>
+              <span *ngIf="isLockedOut">
+                🔒 Locked — wait {{ lockoutCountdown }}s
+              </span>
+            </button>
+          </div>
+
+          <!-- MFA Verification Step -->
+          <div *ngIf="mfaRequired && !showMfaSetup" [@fadeIn]>
+            <div class="mfa-header">
+              <span class="mfa-icon">🔐</span>
+              <h3>Two-Factor Authentication</h3>
+              <p>Enter the 6-digit code from your authenticator app</p>
+            </div>
+
+            <div class="field-group">
+              <label for="mfa-code">Authentication Code</label>
+              <div class="input-wrap">
+                <span class="input-prefix">📱</span>
+                <input
+                  id="mfa-code"
+                  type="text"
+                  placeholder="000000"
+                  [(ngModel)]="mfaCode"
+                  name="mfaCode"
+                  maxlength="6"
+                  inputmode="numeric"
+                  [disabled]="isLoading"
+                  (keyup.enter)="verifyMfa()"
+                  class="mfa-input">
+              </div>
+            </div>
+
+            <div class="trust-device">
+              <label for="trust-check">
+                <input
+                  id="trust-check"
+                  type="checkbox"
+                  [(ngModel)]="trustDevice"
+                  name="trustDevice">
+                <span>Trust this device for 30 days</span>
+              </label>
+              <small *ngIf="trustDevice">You won't need MFA on this device for 30 days</small>
+            </div>
+
+            <div class="device-name-group" *ngIf="trustDevice">
+              <label for="device-name">Device Name (optional)</label>
               <input
-                id="adm-user"
+                id="device-name"
                 type="text"
-                placeholder="Enter admin username"
-                [(ngModel)]="username"
-                name="username"
-                [disabled]="isLoading || isLockedOut"
-                autocomplete="username"
-                spellcheck="false">
+                placeholder="My Admin Computer"
+                [(ngModel)]="deviceName"
+                name="deviceName"
+                class="device-input">
             </div>
+
+            <button
+              type="button"
+              class="submit-btn"
+              (click)="verifyMfa()"
+              [disabled]="isLoading">
+              <span *ngIf="!isLoading">✓ Verify Code</span>
+              <span *ngIf="isLoading"><span class="spinner"></span> Verifying…</span>
+            </button>
+
+            <button
+              type="button"
+              class="back-btn"
+              (click)="mfaRequired = false; mfaCode = ''"
+              [disabled]="isLoading">
+              ← Back to Login
+            </button>
           </div>
 
-          <div class="field-group">
-            <label for="adm-pass">Password</label>
-            <div class="input-wrap">
-              <span class="input-prefix">🔑</span>
+          <!-- MFA Setup Step -->
+          <div *ngIf="showMfaSetup" [@fadeIn]>
+            <div class="mfa-setup-header">
+              <span class="setup-icon">⚙️</span>
+              <h3>Set Up Two-Factor Authentication</h3>
+              <p>Scan the QR code with your authenticator app</p>
+            </div>
+
+            <div class="qr-container" *ngIf="qrCodeUrl">
+              <img [src]="qrCodeUrl" alt="MFA QR Code" class="qr-code">
+            </div>
+
+            <div class="manual-entry">
+              <p class="label">Or enter manually:</p>
+              <code class="secret-code">{{ mfaSecret }}</code>
+              <button type="button" class="copy-btn" (click)="copyToClipboard(mfaSecret)">Copy</button>
+            </div>
+
+            <div class="field-group">
+              <label for="verify-code">Enter 6-digit code to confirm</label>
               <input
-                id="adm-pass"
-                [type]="showPassword ? 'text' : 'password'"
-                placeholder="••••••••••••"
-                [(ngModel)]="password"
-                name="password"
-                [disabled]="isLoading || isLockedOut"
-                (keyup.enter)="login()"
-                autocomplete="current-password">
-              <button type="button" class="toggle-vis" (click)="togglePassword()" tabindex="-1">
-                {{ showPassword ? '🙈' : '👁️' }}
-              </button>
+                id="verify-code"
+                type="text"
+                placeholder="000000"
+                [(ngModel)]="mfaCode"
+                name="mfaCode"
+                maxlength="6"
+                inputmode="numeric"
+                [disabled]="isLoading"
+                class="mfa-input">
             </div>
-          </div>
 
-          <button
-            type="submit"
-            class="submit-btn"
-            [disabled]="isLoading || isLockedOut">
-            <span *ngIf="!isLoading && !isLockedOut">
-              <span class="btn-icon">→</span> Authenticate
-            </span>
-            <span *ngIf="isLoading" class="spinner-wrap">
-              <span class="spinner"></span> Verifying identity…
-            </span>
-            <span *ngIf="isLockedOut">
-              🔒 Locked — wait {{ lockoutCountdown }}s
-            </span>
-          </button>
+            <button
+              type="button"
+              class="submit-btn"
+              (click)="confirmMfaSetup()"
+              [disabled]="isLoading">
+              <span *ngIf="!isLoading">✓ Enable MFA</span>
+              <span *ngIf="isLoading"><span class="spinner"></span> Setting up…</span>
+            </button>
+
+            <button
+              type="button"
+              class="back-btn"
+              (click)="showMfaSetup = false; mfaCode = ''"
+              [disabled]="isLoading">
+              ← Cancel
+            </button>
+          </div>
 
         </form>
 

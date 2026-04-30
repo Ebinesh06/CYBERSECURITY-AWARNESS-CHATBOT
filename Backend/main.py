@@ -148,15 +148,23 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db), aut
     sid = request.session_id
 
     # Get user from token
-    user_id = 1
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
-        payload = decode_access_token(token)
-        if payload:
-            username = payload.get("sub")
-            user = db.query(User).filter(User.username == username).first()
-            if user:
-                user_id = user.id
+    # Secure Token Extraction
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required to use the chat.")
+    
+    token = authorization.split(" ")[1]
+    payload = decode_access_token(token)
+    
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token.")
+        
+    username = payload.get("sub")
+    user = db.query(User).filter(User.username == username).first()
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+        
+    user_id = user.id
 
     if sid not in chat_history:
         chat_history[sid] = []
@@ -184,8 +192,8 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db), aut
         "4) Use numbered lists (1., 2., 3.) for sequential steps. "
         "5) Keep paragraphs short — max 2-3 sentences each. "
         "6) End with a brief '📋 Summary' or '💡 Key Takeaway' when appropriate. "
-        "STRICT RULE: Base your answers on the 'Retrieved Intelligence' and 'Chat History'. "
-        "Be thorough but concise. Sound authoritative and professional."
+        "STRICT RULE: Base your answers ONLY on the 'Retrieved Intelligence' provided below. If you don't know the answer based on the intelligence, say 'I do not have information on this threat.'\n\n"
+        f"=== Retrieved Intelligence ===\n{context}\n============================"
     )
 
     messages = [{"role": "system", "content": system_prompt}]
@@ -219,15 +227,23 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db), aut
 @app.get("/chat/sessions")
 async def list_sessions(db: Session = Depends(get_db), authorization: Optional[str] = Header(None)):
     """List all chat sessions for the current user."""
-    user_id = 1
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
-        payload = decode_access_token(token)
-        if payload:
-            username = payload.get("sub")
-            user = db.query(User).filter(User.username == username).first()
-            if user:
-                user_id = user.id
+    # Secure Token Extraction
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required to use the chat.")
+    
+    token = authorization.split(" ")[1]
+    payload = decode_access_token(token)
+    
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token.")
+        
+    username = payload.get("sub")
+    user = db.query(User).filter(User.username == username).first()
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+        
+    user_id = user.id
 
     # Get distinct session_ids with their first user message as title and latest timestamp
     sessions_raw = (
@@ -266,15 +282,23 @@ async def list_sessions(db: Session = Depends(get_db), authorization: Optional[s
 @app.get("/chat/sessions/{session_id}")
 async def get_session_messages(session_id: str, db: Session = Depends(get_db), authorization: Optional[str] = Header(None)):
     """Get all messages for a specific session."""
-    user_id = 1
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
-        payload = decode_access_token(token)
-        if payload:
-            username = payload.get("sub")
-            user = db.query(User).filter(User.username == username).first()
-            if user:
-                user_id = user.id
+    # Secure Token Extraction
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required to use the chat.")
+    
+    token = authorization.split(" ")[1]
+    payload = decode_access_token(token)
+    
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token.")
+        
+    username = payload.get("sub")
+    user = db.query(User).filter(User.username == username).first()
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+        
+    user_id = user.id
 
     messages = (
         db.query(ChatMessage)
@@ -297,15 +321,23 @@ async def get_session_messages(session_id: str, db: Session = Depends(get_db), a
 @app.delete("/chat/sessions/{session_id}")
 async def delete_session(session_id: str, db: Session = Depends(get_db), authorization: Optional[str] = Header(None)):
     """Delete a chat session."""
-    user_id = 1
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
-        payload = decode_access_token(token)
-        if payload:
-            username = payload.get("sub")
-            user = db.query(User).filter(User.username == username).first()
-            if user:
-                user_id = user.id
+    # Secure Token Extraction
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required to use the chat.")
+    
+    token = authorization.split(" ")[1]
+    payload = decode_access_token(token)
+    
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token.")
+        
+    username = payload.get("sub")
+    user = db.query(User).filter(User.username == username).first()
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+        
+    user_id = user.id
 
     db.query(ChatMessage).filter(
         ChatMessage.session_id == session_id,

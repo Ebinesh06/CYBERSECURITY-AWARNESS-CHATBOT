@@ -11,3 +11,9 @@ Backend/db/
 __pycache__/
 *.pyc
 .DS_Store
+# Databases
+*.db
+chroma_db/
+# AI Models
+Backend/models/
+backend/venv/

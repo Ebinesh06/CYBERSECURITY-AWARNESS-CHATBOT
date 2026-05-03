@@ -147,7 +147,6 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db), aut
     user_message = request.message
     sid = request.session_id
 
-    # Get user from token
     # Secure Token Extraction
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Authentication required to use the chat.")
@@ -166,13 +165,17 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db), aut
         
     user_id = user.id
 
-    if sid not in chat_history:
-        chat_history[sid] = []
+    recent_messages = db.query(ChatMessage).filter(
+        ChatMessage.session_id == sid,
+        ChatMessage.user_id == user_id
+    ).order_by(ChatMessage.id.desc()).limit(12).all()
+    
+    recent_messages.reverse()
+    db_history = [{"role": m.role, "content": m.content} for m in recent_messages]
 
+    # FIX 1: The Snowball Bug is officially removed. 
+    # Search is now strictly focused on the current question.
     search_query = user_message
-    if len(chat_history[sid]) > 0:
-        last_context = chat_history[sid][-1]["content"]
-        search_query = f"{last_context} {user_message}"
     
     hybrid_docs = hybrid_search(search_query)
 
@@ -183,21 +186,21 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db), aut
     final_context_list = [res['text'] for res in reranked_results[:3]]
     context = "\n\n".join(final_context_list)
 
-    system_prompt = (
-        "You are an Elite Cybersecurity Analyst. Your responses must be well-structured, professional, and easy to read. "
-        "FORMATTING RULES: "
-        "1) Use clear section headers with emoji prefixes (e.g., '🔍 Analysis', '🛡️ Recommendations', '⚠️ Risks'). "
-        "2) Use emoji bullet points (🔹, 🔸, ✅, ❌, 📌) instead of plain asterisks or dashes. "
-        "3) Use **bold** for key terms, CVE IDs, and important concepts. "
-        "4) Use numbered lists (1., 2., 3.) for sequential steps. "
-        "5) Keep paragraphs short — max 2-3 sentences each. "
-        "6) End with a brief '📋 Summary' or '💡 Key Takeaway' when appropriate. "
-        "STRICT RULE: Base your answers ONLY on the 'Retrieved Intelligence' provided below. If you don't know the answer based on the intelligence, say 'I do not have information on this threat.'\n\n"
-        f"=== Retrieved Intelligence ===\n{context}\n============================"
-    )
+    system_prompt = f"""=== RETRIEVED INTELLIGENCE ===
+{context}
+==============================
+
+You are an Elite Cybersecurity Analyst. You are professional, concise, and helpful.
+
+CRITICAL RULES YOU MUST FOLLOW:
+1. NO ROBOT SPEAK: NEVER say "Based on the retrieved intelligence", "According to my knowledge", or "The provided information says". Just state the facts confidently as your own knowledge.
+2. STRICT FORMATTING: You MUST use emojis (✅, 🔹, ⚠️, 🛡️) for ALL bullet points. Do not use plain asterisks (*). 
+3. SMALL TALK: If the user just says hello or introduces themselves, greet them warmly. DO NOT bring up malware unless they explicitly ask.
+4. MEMORY PROTOCOL: You have access to the user's Chat History. If the user asks you to summarize a past answer or recall something you ALREADY discussed, you MUST use the Chat History to answer. Never claim you didn't discuss something if it is in your history.
+"""
 
     messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(chat_history[sid][-4:])
+    messages.extend(db_history)
     messages.append({"role": "user", "content": user_message})
 
     async def event_generator():
@@ -211,19 +214,19 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db), aut
                     yield content
         except Exception as e:
             yield f"Error: {str(e)}"
-        finally:
-            chat_history[sid].append({"role": "user", "content": user_message})
-            chat_history[sid].append({"role": "assistant", "content": full_response})
+        finally: 
+            # FIX 2: Create a brand new, private database session just for the stream
+            stream_db = SessionLocal()
             try:
-                db.add(ChatMessage(user_id=user_id, session_id=sid, role="user", content=user_message, created_at=datetime.utcnow()))
-                db.add(ChatMessage(user_id=user_id, session_id=sid, role="assistant", content=full_response, created_at=datetime.utcnow()))
-                db.commit()
+                stream_db.add(ChatMessage(user_id=user_id, session_id=sid, role="user", content=user_message, created_at=datetime.utcnow()))
+                stream_db.add(ChatMessage(user_id=user_id, session_id=sid, role="assistant", content=full_response, created_at=datetime.utcnow()))
+                stream_db.commit()
             except Exception as e:
                 print(f"DB save error: {e}")
+            finally:
+                stream_db.close() # Always clean up the connection!
 
     return StreamingResponse(event_generator(), media_type="text/plain")
-
-
 @app.get("/chat/sessions")
 async def list_sessions(db: Session = Depends(get_db), authorization: Optional[str] = Header(None)):
     """List all chat sessions for the current user."""
@@ -385,9 +388,12 @@ async def login(request: UserLoginRequest, db: Session = Depends(get_db)):
     """
     Enterprise user login with rate limiting, device fingerprinting, and suspicious activity detection
     """
+    # FIX: Force username to lowercase to prevent case-sensitivity issues
+    request.username = request.username.lower()
     
     client_ip = get_client_ip(request.ip_address)
     rate_limit_key_user = f"user_login:{request.username}"
+    # ... (leave the rest of the function exactly as is)
     rate_limit_key_ip = f"user_login_ip:{client_ip}"
     
     # Check rate limiting by username
@@ -476,13 +482,20 @@ async def login(request: UserLoginRequest, db: Session = Depends(get_db)):
         user.force_mfa = True  # Force MFA on expired password
     
     # Check suspicious activity
+    # Check suspicious activity
     previous_logins = db.query(LoginSession).filter(
         LoginSession.user_id == user.id,
         LoginSession.is_active == True
     ).all()
     
+    # FIX: Extract the specific fields into a list of tuples so auth_utils can read it
+    formatted_previous_logins = [
+        (login.ip_address, login.device_fingerprint, login.created_at) 
+        for login in previous_logins
+    ]
+    
     is_suspicious, reason = is_suspicious_login(
-        user.id, client_ip, request.device_fingerprint, previous_logins
+        user.id, client_ip, request.device_fingerprint, formatted_previous_logins
     )
     
     if is_suspicious:
@@ -565,8 +578,13 @@ async def signup(request: UserSignupRequest, db: Session = Depends(get_db)):
     """
     Enterprise user signup with password strength validation and optional MFA
     """
+    # FIX: Force username to lowercase before checking or saving to database
+    request.username = request.username.lower()
     
     client_ip = get_client_ip(request.ip_address)
+    
+    # Check if user already exists
+    # ... (leave the rest of the function exactly as is)
     
     # Check if user already exists
     existing_user = db.query(User).filter(User.username == request.username).first()

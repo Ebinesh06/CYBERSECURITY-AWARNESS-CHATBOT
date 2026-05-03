@@ -2,7 +2,8 @@ from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey,
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
-
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey
+from datetime import datetime
 # SQLite is great for local development; it creates a 'cybersecurity.db' file
 DATABASE_URL = "sqlite:///./cybersecurity.db"
 
@@ -31,13 +32,28 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class ChatMessage(Base):
-    __tablename__ = "messages"
+    __tablename__ = "chat_messages"
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    session_id = Column(String, index=True)
-    role = Column(String)  # 'user' or 'assistant'
+    # ✅ IMPROVEMENT 1: Added index=True to foreign keys for instant lookups
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    session_id = Column(String, index=True) 
+    
+    role = Column(String) # "user" or "assistant"
     content = Column(Text)
+    
+    # ✅ IMPROVEMENT 2: AI Metadata
+    model_used = Column(String, default="llama3")
+    prompt_tokens = Column(Integer, nullable=True) 
+    completion_tokens = Column(Integer, nullable=True)
+    
+    # ✅ IMPROVEMENT 3: RLHF (Reinforcement Learning from Human Feedback)
+    user_rating = Column(Integer, nullable=True) # 1 for thumbs up, -1 for thumbs down
+    
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # ✅ IMPROVEMENT 4: Soft Deletes for Forensics
+    is_deleted = Column(Boolean, default=False)
 
 class AuditLog(Base):
     """Track all security-relevant events"""

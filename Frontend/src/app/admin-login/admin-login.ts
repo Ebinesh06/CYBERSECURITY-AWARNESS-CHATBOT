@@ -69,43 +69,29 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
     this.showPassword = !this.showPassword;
   }
 
-  login() {
-    if (this.isLockedOut) return;
-    if (!this.username.trim() || !this.password.trim()) {
-      this.errorMessage = 'Username and password required.';
-      return;
+  // Inside your admin-login.ts file
+
+login() {
+  this.http.post('http://localhost:8000/auth/admin-login', {
+    username: this.username,
+    password: this.password,
+    device_fingerprint: "admin_machine_01",
+    ip_address: "127.0.0.1"
+  }).subscribe({
+    next: (response: any) => {
+      // 1. SAVE THE SECURITY CLEARANCE
+      localStorage.setItem('token', response.access_token);
+      localStorage.setItem('role', response.role); // MUST be 'admin'
+      
+      // 2. TRIGGER THE REDIRECT
+      this.router.navigate(['/admin-shell']); 
+    },
+    error: (err) => {
+      console.error("Login Failed", err);
+      // Show error message on UI
     }
-
-    this.isLoading = true;
-    this.errorMessage = '';
-
-    this.http.post<any>(`${this.apiUrl}/auth/admin-login`, {
-      username: this.username.trim(),
-      password: this.password.trim(),
-      device_fingerprint: this.generateDeviceFingerprint(),
-      ip_address: 'auto-detect'
-    }).subscribe({
-      next: (res) => {
-        if (res.requires_mfa) {
-          this.mfaRequired = true;
-          this.mfaTokenTemp = res.mfa_token;
-          this.isLoading = false;
-          this.errorMessage = 'MFA code required.';
-          return;
-        }
-        this.clearLockout();
-        localStorage.setItem('access_token', res.access_token);
-        localStorage.setItem('username', res.username);
-        this.isLoading = false;
-        this.router.navigate(['/admin-shell/dashboard']);
-      },
-      error: (err) => {
-        this.isLoading = false;
-        this.recordFailedAttempt();
-        this.errorMessage = err.status === 423 ? 'Account locked.' : 'Login failed.';
-      }
-    });
-  }
+  });
+}
 
   verifyMfa() {
     if (!this.mfaCode || this.mfaCode.length !== 6) {

@@ -2,8 +2,6 @@ from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey,
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey
-from datetime import datetime
 # SQLite is great for local development; it creates a 'cybersecurity.db' file
 DATABASE_URL = "sqlite:///./cybersecurity.db"
 

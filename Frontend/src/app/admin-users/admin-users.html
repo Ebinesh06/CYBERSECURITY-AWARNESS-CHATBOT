@@ -1,44 +1,53 @@
-<section class="users-page">
-  <header class="users-header">
+<div class="users-dashboard">
+  <div class="dashboard-header">
     <div>
-      <p class="eyebrow">Identity and Access</p>
-      <h2>User Governance</h2>
-      <p class="subtitle">Control account state, role scope, and privileged safeguards.</p>
+      <h2>User Management</h2>
+      <p class="subtitle">Manage enterprise access and security clearances.</p>
     </div>
-    <button type="button" class="primary-btn">Invite Account</button>
-  </header>
-
-  <div class="controls">
-    <input
-      type="text"
-      [(ngModel)]="searchQuery"
-      (input)="applyFilters()"
-      placeholder="Search username or email"
-    />
-
-    <select [ngModel]="roleFilter" (ngModelChange)="updateRoleFilter($event)">
-      <option value="all">All roles</option>
-      <option value="admin">Admin</option>
-      <option value="analyst">Analyst</option>
-      <option value="user">User</option>
-    </select>
-
-    <select [ngModel]="statusFilter" (ngModelChange)="updateStatusFilter($event)">
-      <option value="all">All statuses</option>
-      <option value="active">Active</option>
-      <option value="pending">Pending</option>
-      <option value="suspended">Suspended</option>
-    </select>
+    <button class="refresh-btn" (click)="loadUsers()" [disabled]="loading">
+      <span *ngIf="loading">⏳ Loading...</span>
+      <span *ngIf="!loading">🔄 Refresh Data</span>
+    </button>
   </div>
 
-  <div *ngIf="loading" class="state-card">Loading user registry...</div>
-  <div *ngIf="error" class="state-card error">{{ error }}</div>
+  <div *ngIf="error" class="error-banner">
+    ⚠️ {{ error }}
+  </div>
 
-  <div *ngIf="!loading" class="table-wrap">
-    <table>
+  <!-- Advanced Filtering Bar -->
+  <div class="filters-bar">
+    <div class="search-box">
+      <input 
+        type="text" 
+        placeholder="🔍 Search usernames..." 
+        [(ngModel)]="searchQuery" 
+        (ngModelChange)="applyFilters()">
+    </div>
+    
+    <div class="filter-group">
+      <select [(ngModel)]="roleFilter" (ngModelChange)="updateRoleFilter($event)">
+        <option value="all">All Roles</option>
+        <option value="admin">Administrators</option>
+        <option value="user">Standard Users</option>
+        <option value="analyst">Analysts</option>
+      </select>
+      
+      <select [(ngModel)]="statusFilter" (ngModelChange)="updateStatusFilter($event)">
+        <option value="all">All Statuses</option>
+        <option value="active">🟢 Active</option>
+        <option value="suspended">🔴 Suspended</option>
+        <option value="pending">🟡 Pending</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Enterprise Data Table -->
+  <div class="table-wrapper">
+    <table class="enterprise-table">
       <thead>
         <tr>
-          <th>Identity</th>
+          <th>ID</th>
+          <th>Username</th>
           <th>Role</th>
           <th>Status</th>
           <th>Security Actions</th>
@@ -46,26 +55,47 @@
       </thead>
       <tbody>
         <tr *ngFor="let user of filteredUsers">
+          <td class="id-cell">#{{ user.id }}</td>
+          <td class="username-cell">{{ user.username }}</td>
           <td>
-            <p class="cell-main">{{ user.username }}</p>
+            <span class="role-badge" [ngClass]="'role-' + user.role">
+              {{ user.role | uppercase }}
+            </span>
           </td>
           <td>
-            <span class="badge" [class.admin]="user.role === 'admin'" [class.analyst]="user.role === 'analyst'">{{ user.role }}</span>
+            <span class="status-badge" [ngClass]="'status-' + user.status">
+              {{ user.status }}
+            </span>
           </td>
-          <td>
-            <span class="badge" [class.active]="user.status === 'active'" [class.pending]="user.status === 'pending'" [class.suspended]="user.status === 'suspended'">{{ user.status }}</span>
+          <td class="actions-cell">
+            <button class="action-btn warn-btn" 
+                    [disabled]="user.role === 'admin'" 
+                    (click)="toggleUserStatus(user)" 
+                    title="Suspend or Activate User">
+              {{ user.status === 'active' ? 'Suspend' : 'Activate' }}
+            </button>
+            <button class="action-btn sec-btn" (click)="forceMfa(user)">Force MFA</button>
+            <button class="action-btn sec-btn" (click)="rotateCredentials(user)">Rotate Creds</button>
+            <button class="action-btn danger-btn" 
+                    [disabled]="user.role === 'admin'" 
+                    (click)="deleteUser(user.id)">
+              Delete
+            </button>
           </td>
-          <td>
-            <div class="actions">
-              <button type="button" (click)="toggleUserStatus(user)">Toggle Status</button>
-              <button type="button" (click)="rotateCredentials(user)">Rotate Credentials</button>
-              <button type="button" class="danger" (click)="deleteUser(user.id)">Delete</button>
-            </div>
+        </tr>
+        
+        <!-- Empty States -->
+        <tr *ngIf="!loading && filteredUsers.length === 0">
+          <td colspan="5" class="empty-state">
+            No users match your current filters.
+          </td>
+        </tr>
+        <tr *ngIf="loading">
+          <td colspan="5" class="empty-state loading-state">
+            Decrypting user database...
           </td>
         </tr>
       </tbody>
     </table>
-
-    <div *ngIf="filteredUsers.length === 0" class="state-card">No users match current filters.</div>
   </div>
-</section>
+</div>

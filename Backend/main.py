@@ -23,6 +23,7 @@ import base64
 import json
 import hashlib
 import secrets
+temp_mfa_secrets = {}
 
 # Dependency to get the database session
 def get_db():
@@ -943,7 +944,7 @@ async def setup_mfa(request: SetupMfaRequest, db: Session = Depends(get_db)):
     
     # Generate secret
     secret = generate_mfa_secret()
-    
+    temp_mfa_secrets[request.username] = secret
     # Generate QR code
     totp = pyotp.TOTP(secret)
     qr_uri = totp.provisioning_uri(name=user.username, issuer_name="CyberSecurityChatbot")
@@ -1018,7 +1019,7 @@ async def user_setup_mfa(request: SetupMfaRequest, db: Session = Depends(get_db)
     
     # Generate secret
     secret = generate_mfa_secret()
-    
+    temp_mfa_secrets[request.username] = secret
     # Generate QR code
     totp = pyotp.TOTP(secret)
     qr_uri = totp.provisioning_uri(name=user.username, issuer_name="CyberSecurityChatbot")
@@ -1049,6 +1050,9 @@ async def user_setup_mfa(request: SetupMfaRequest, db: Session = Depends(get_db)
         "provisioning_uri": qr_uri,
         "message": "Scan QR code with authenticator app. Enter code to confirm setup."
     }
+    secret = temp_mfa_secrets.get(request.username)
+    if not secret:
+        raise HTTPException(status_code=400, detail="MFA setup session expired")
 
 @app.post("/auth/user/confirm-mfa")
 async def user_confirm_mfa(request: ConfirmMfaSetupRequest, db: Session = Depends(get_db)):
@@ -1062,7 +1066,10 @@ async def user_confirm_mfa(request: ConfirmMfaSetupRequest, db: Session = Depend
     
     # For security, secret should come from a session store
     # For now, regenerate and verify
-    secret = generate_mfa_secret()
+    secret = temp_mfa_secrets.get(request.username)
+
+    if not secret:
+        raise HTTPException(status_code=400, detail="MFA setup session expired")
     
     if not verify_totp(secret, request.mfa_code):
         raise HTTPException(status_code=400, detail="Invalid MFA code")
@@ -1082,7 +1089,7 @@ async def user_confirm_mfa(request: ConfirmMfaSetupRequest, db: Session = Depend
     db.commit()
     
     return {"message": "MFA setup successful", "status": "enabled"}
-
+    # del temp_mfa_secrets[request.username]
 @app.post("/auth/refresh-token")
 async def refresh_token_endpoint(request: RefreshTokenRequest, db: Session = Depends(get_db)):
     """

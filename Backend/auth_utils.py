@@ -6,17 +6,27 @@ import hashlib
 import secrets
 import json
 from typing import Optional, Dict
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Setup password hashing with PBKDF2
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 # Secret keys (use environment variables in production)
-SECRET_KEY = "your-secret-key-change-me-in-production"
-REFRESH_SECRET_KEY = "your-refresh-secret-key-change-me-in-production"
+SECRET_KEY = os.getenv("SECRET_KEY") or "dev-secret-key-change-in-production-12345678901234"
+REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY") or "dev-refresh-secret-key-change-in-production-9876543210"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15  # Shorter for admin accounts
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 ADMIN_SESSION_TIMEOUT_MINUTES = 30  # Auto-logout for admin
+
+# Log if using dev secrets
+if not os.getenv("SECRET_KEY"):
+    print("⚠️  WARNING: Using development SECRET_KEY. Change in production!")
+if not os.getenv("REFRESH_SECRET_KEY"):
+    print("⚠️  WARNING: Using development REFRESH_SECRET_KEY. Change in production!")
 
 # Rate limiting constants
 MAX_LOGIN_ATTEMPTS = 5

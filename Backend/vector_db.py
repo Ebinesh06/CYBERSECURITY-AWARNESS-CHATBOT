@@ -1,67 +1,80 @@
-import os
-from pathlib import Path
+from rank_bm25 import BM25Okapi
+from flashrank import Ranker
+from pydantic import BaseModel
+import chromadb
+# 5. ChromaDB - Initialize with fallback
+try:
+    
+    from chromadb.utils import embedding_functions
 
-from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import SentenceTransformerEmbeddings
-from langchain_community.vectorstores import Chroma
-
-
-DATA_DIR = "./data"
-DB_DIR = "./db"
-
-
-def load_documents():
-    documents = []
-    path = Path(DATA_DIR)
-
-    if not path.exists():
-        print("❌ data folder not found")
-        return documents
-
-    for file in path.glob("*.txt"):
-        loader = TextLoader(str(file), encoding="utf-8")
-        documents.extend(loader.load())
-
-    print(f"✅ Loaded {len(documents)} documents")
-    return documents
-
-
-def split_documents(documents):
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=300,
-        chunk_overlap=50
-    )
-    chunks = splitter.split_documents(documents)
-    print(f"✅ Created {len(chunks)} chunks")
-    return chunks
-
-
-def create_db(chunks):
-    embedding = SentenceTransformerEmbeddings(
+    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
         model_name="all-MiniLM-L6-v2"
     )
 
-    db = Chroma.from_documents(
-        chunks,
-        embedding,
-        persist_directory=DB_DIR
+    chroma_client = chromadb.PersistentClient(path="./chroma_db")
+
+    intelligence_collection = chroma_client.get_collection(
+        name="cyber_intelligence",
+        embedding_function=sentence_transformer_ef
+    )
+    # --- PHASE 2 STARTUP: KEYWORD INDEXING ---
+    all_data = intelligence_collection.get()
+    documents = all_data['documents']
+    metadatas = all_data['metadatas']
+    
+    tokenized_corpus = [doc.lower().split(" ") for doc in documents]
+    bm25 = BM25Okapi(tokenized_corpus)
+except Exception as e:
+    print(f"Warning: ChromaDB initialization failed: {e}")
+    print("Proceeding with authentication endpoints only")
+    chroma_client = None
+    intelligence_collection = None
+    all_data = {'documents': [], 'metadatas': []}
+    documents = []
+    metadatas = []
+    tokenized_corpus = []
+    bm25 = None
+
+ranker = Ranker(model_name="ms-marco-TinyBERT-L-2-v2", cache_dir="./models")
+
+print(f"SUCCESS: Indexed {len(documents)} vulnerabilities for Precision Search.")
+
+# 4. Request models
+class ChatRequest(BaseModel):
+    message: str
+    session_id: str = "default_user"
+
+def hybrid_search(query, top_k=10):
+
+    vector_results = intelligence_collection.query(
+        query_texts=[query],
+        n_results=top_k
     )
 
-    db.persist()
-    print("✅ Vector DB created successfully!")
+    ...
 
+    ranked_docs = sorted(
+        fusion_results.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
 
-def main():
-    os.makedirs(DB_DIR, exist_ok=True)
+    print("\n========== HYBRID SEARCH ==========")
+    print(f"Query: {query}")
 
-    docs = load_documents()
-    if not docs:
-        return
+    for i, (doc, score) in enumerate(ranked_docs[:top_k]):
 
-    chunks = split_documents(docs)
-    create_db(chunks)
+        print(f"\nResult {i+1}")
+        print(f"Fusion Score : {score:.4f}")
 
+        # Find metadata
+        try:
+            idx = documents.index(doc)
+            print(f"Source : {metadatas[idx]}")
+        except ValueError:
+            print("Source : Unknown")
 
-if __name__ == "__main__":
-    main()
+        print(doc[:300])
+        print("----------------------------------")
+
+    return ranked_docs[:top_k]

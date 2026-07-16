@@ -48,7 +48,7 @@ CRITICAL RULES YOU MUST FOLLOW:
         full_response = ""
 
     try:
-
+ 
         for content in stream_chat(messages):
 
             full_response += content

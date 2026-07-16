@@ -1,19 +1,69 @@
-# Ignore the virtual environments
-venv/
-Backend/venv/
+# ===========================
+# Python
+# ===========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
 
-# Ignore the local database
-Backend/chroma_db/
-Backend/db/
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Environment Variables
+.env
+
+# SQLite Database
+*.db
 *.sqlite3
 
-# Ignore system files and cache
-__pycache__/
-*.pyc
-.DS_Store
-# Databases
-*.db
+# ChromaDB
 chroma_db/
-# AI Models
-Backend/models/
-backend/venv/
+
+# Hugging Face / Model Cache
+models/
+.cache/
+
+# Python Logs
+*.log
+
+# ===========================
+# Node / React
+# ===========================
+node_modules/
+dist/
+build/
+
+# npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===========================
+# VS Code
+# ===========================
+.vscode/
+
+# ===========================
+# OS Files
+# ===========================
+.DS_Store
+Thumbs.db
+
+# ===========================
+# Pytest
+# ===========================
+.pytest_cache/
+
+# ===========================
+# Coverage
+# ===========================
+.coverage
+htmlcov/
+
+# ===========================
+# IDE
+# ===========================
+.idea/

@@ -89,9 +89,19 @@ class RefreshTokenRequest(BaseModel):
 
 # 5. ChromaDB - Initialize with fallback
 try:
-    chroma_client = chromadb.PersistentClient(path="./chroma_db")
-    intelligence_collection = chroma_client.get_collection(name="cyber_intelligence")
     
+    from chromadb.utils import embedding_functions
+
+    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+        model_name="all-MiniLM-L6-v2"
+    )
+
+    chroma_client = chromadb.PersistentClient(path="./chroma_db")
+
+    intelligence_collection = chroma_client.get_collection(
+        name="cyber_intelligence",
+        embedding_function=sentence_transformer_ef
+    )
     # --- PHASE 2 STARTUP: KEYWORD INDEXING ---
     all_data = intelligence_collection.get()
     documents = all_data['documents']
@@ -120,72 +130,66 @@ class ChatRequest(BaseModel):
     session_id: str = "default_user"
 
 def hybrid_search(query, top_k=10):
-    vector_results = intelligence_collection.query(query_texts=[query], n_results=top_k)
-    tokenized_query = query.lower().split(" ")
-    bm25_scores = bm25.get_scores(tokenized_query)
-    
-    fusion_results = {}
-    if vector_results['documents'] and vector_results['documents'][0]:
-        for i, doc in enumerate(vector_results['documents'][0]):
-            fusion_results[doc] = 1 / (i + 60)
 
-    top_n_bm25 = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)[:top_k]
-    for i, idx in enumerate(top_n_bm25):
-        doc = documents[idx]
-        score = 1 / (i + 60)
-        fusion_results[doc] = fusion_results.get(doc, 0) + score
+    vector_results = intelligence_collection.query(
+        query_texts=[query],
+        n_results=top_k
+    )
 
-    ranked_docs = sorted(fusion_results.items(), key=lambda x: x[1], reverse=True)
-    return [doc for doc, score in ranked_docs[:top_k]]
+    ...
 
+    ranked_docs = sorted(
+        fusion_results.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    print("\n========== HYBRID SEARCH ==========")
+    print(f"Query: {query}")
+
+    for i, (doc, score) in enumerate(ranked_docs[:top_k]):
+
+        print(f"\nResult {i+1}")
+        print(f"Fusion Score : {score:.4f}")
+
+        # Find metadata
+        try:
+            idx = documents.index(doc)
+            print(f"Source : {metadatas[idx]}")
+        except ValueError:
+            print("Source : Unknown")
+
+        print(doc[:300])
+        print("----------------------------------")
+
+    return ranked_docs[:top_k]
 
 # ============================================
 # CHAT ENDPOINTS
 # ============================================
 
+import time
+
 @app.post("/chat")
-async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db), authorization: Optional[str] = Header(None)):
+async def chat(request: ChatRequest):
+
     user_message = request.message
-    sid = request.session_id
 
-    # Secure Token Extraction
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required to use the chat.")
-    
-    token = authorization.split(" ")[1]
-    payload = decode_access_token(token)
-    
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired token.")
-        
-    username = payload.get("sub")
-    user = db.query(User).filter(User.username == username).first()
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found.")
-        
-    user_id = user.id
+    # Measure retrieval performance
+    start = time.perf_counter()
 
-    recent_messages = db.query(ChatMessage).filter(
-        ChatMessage.session_id == sid,
-        ChatMessage.user_id == user_id
-    ).order_by(ChatMessage.id.desc()).limit(12).all()
-    
-    recent_messages.reverse()
-    db_history = [{"role": m.role, "content": m.content} for m in recent_messages]
+    retrieved_results = hybrid_search(user_message)
 
-    # FIX 1: The Snowball Bug is officially removed. 
-    # Search is now strictly focused on the current question.
-    search_query = user_message
-    
-    hybrid_docs = hybrid_search(search_query)
+    elapsed = time.perf_counter() - start
 
-    ranker_input = [{"id": i, "text": doc} for i, doc in enumerate(hybrid_docs)]
-    rerank_request = RerankRequest(query=search_query, passages=ranker_input)
-    reranked_results = ranker.rerank(rerank_request)
+    print("\n========== RAG METRICS ==========")
+    print(f"Retrieved Documents : {len(retrieved_docs)}")
+    print(f"Retrieval Time      : {elapsed:.3f} seconds")
+    print("=================================\n")
 
-    final_context_list = [res['text'] for res in reranked_results[:3]]
-    context = "\n\n".join(final_context_list)
+    context = "\n\n".join(
+    doc for doc, score in retrieved_results
+)
 
     system_prompt = f"""=== RETRIEVED INTELLIGENCE ===
 {context}

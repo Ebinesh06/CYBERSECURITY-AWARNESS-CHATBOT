@@ -67,3 +67,6 @@ htmlcov/
 # IDE
 # ===========================
 .idea/
+
+Backend/models/
+__MACOSX/

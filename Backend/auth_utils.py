@@ -7,9 +7,11 @@ import secrets
 import json
 from typing import Optional, Dict
 import os
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 # Setup password hashing with PBKDF2
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -24,9 +26,9 @@ ADMIN_SESSION_TIMEOUT_MINUTES = 30  # Auto-logout for admin
 
 # Log if using dev secrets
 if not os.getenv("SECRET_KEY"):
-    print("⚠️  WARNING: Using development SECRET_KEY. Change in production!")
+    logger.warning("Using development SECRET_KEY. Change in production!")
 if not os.getenv("REFRESH_SECRET_KEY"):
-    print("⚠️  WARNING: Using development REFRESH_SECRET_KEY. Change in production!")
+    logger.warning("Using development REFRESH_SECRET_KEY. Change in production!")
 
 # Rate limiting constants
 MAX_LOGIN_ATTEMPTS = 5

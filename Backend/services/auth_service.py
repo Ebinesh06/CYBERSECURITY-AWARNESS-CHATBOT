@@ -2,10 +2,11 @@ from typing import Optional
 try:
 	from fastapi import Header, HTTPException, Depends
 except Exception:
-	from Backend._compat_fastapi import Header, HTTPException, Depends
+	from _compat_fastapi import Header, HTTPException, Depends
 from sqlalchemy.orm import Session
-from Backend.database import User
-from Backend.auth_utils import decode_access_token
+from database import User
+from auth_utils import decode_access_token
+from constants import ROLE_ADMIN
 from .database_service import get_db
 
 
@@ -23,9 +24,9 @@ def get_current_user(authorization: Optional[str] = Header(None), db: Session = 
 	return user
 
 
-def require_admin(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)) -> dict:
+def require_admin(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)) -> User:
 	payload = get_current_user(authorization, db)
 	# payload may be a User object; check role
-	if getattr(payload, "role", None) != "admin":
+	if getattr(payload, "role", None) != ROLE_ADMIN:
 		raise HTTPException(status_code=403, detail="Admin access required")
 	return payload

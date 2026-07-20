@@ -1,7 +1,7 @@
 ﻿try:
     from fastapi import APIRouter, Depends, HTTPException, status, Header
 except Exception:
-    from Backend._compat_fastapi import APIRouter, Depends, HTTPException, Header
+    from _compat_fastapi import APIRouter, Depends, HTTPException, Header
     class status:
         HTTP_401_UNAUTHORIZED = 401
         HTTP_423_LOCKED = 423
@@ -13,9 +13,10 @@ import secrets
 import io
 import base64
 
-from Backend.database import User, AuditLog, LoginSession, PasswordHistory, TrustedDevice
-from Backend.services.database_service import get_db
-from Backend.auth_utils import (
+from database import User, AuditLog, LoginSession, PasswordHistory, TrustedDevice
+from constants import ROLE_ADMIN, ROLE_USER
+from services.database_service import get_db
+from auth_utils import (
     verify_password,
     create_access_token,
     create_refresh_token,
@@ -101,7 +102,7 @@ def decode_mfa_token(token: str) -> Optional[dict]:
         return None
 
 
-def create_session_tokens(user: User, db, device_fingerprint: str, ip_address: str):
+def create_session_tokens(user: User, db, device_fingerprint: str, ip_address: str) -> tuple[str, str]:
     access_token = create_access_token(data={"sub": user.username, "role": user.role})
     refresh_token = create_refresh_token(data={"sub": user.username})
     login_session = LoginSession(
@@ -124,15 +125,15 @@ def create_session_tokens(user: User, db, device_fingerprint: str, ip_address: s
 
 
 @router.post("/auth/setup-admin")
-async def setup_admin(db = Depends(get_db)):
-    admin_exists = db.query(User).filter(User.username == "admin").first()
+async def setup_admin(db = Depends(get_db)) -> dict[str, str]:
+    admin_exists = db.query(User).filter(User.username == ROLE_ADMIN).first()
     if admin_exists:
         return {"message": "Admin already exists"}
 
     new_admin = User(
-        username="admin",
+        username=ROLE_ADMIN,
         password_hash=get_password_hash("admin123"),
-        role="admin",
+        role=ROLE_ADMIN,
         mfa_enabled=False,
         account_locked=False,
         failed_login_attempts=0,
@@ -147,7 +148,7 @@ async def setup_admin(db = Depends(get_db)):
 
 
 @router.post("/auth/login")
-async def login(request: UserLoginRequest, db = Depends(get_db)):
+async def login(request: UserLoginRequest, db = Depends(get_db)) -> dict[str, object]:
     request.username = request.username.lower()
     client_ip = get_client_ip(request.ip_address)
     rate_limit_key_user = f"user_login:{request.username}"
@@ -199,16 +200,16 @@ async def login(request: UserLoginRequest, db = Depends(get_db)):
 
 
 @router.post("/auth/admin-login")
-async def admin_login(request: UserLoginRequest, db = Depends(get_db)):
+async def admin_login(request: UserLoginRequest, db = Depends(get_db)) -> dict[str, object]:
     request.username = request.username.lower()
-    user = db.query(User).filter(User.username == request.username, User.role == "admin").first()
+    user = db.query(User).filter(User.username == request.username, User.role == ROLE_ADMIN).first()
     if not user or not verify_password(request.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin credentials")
     return await login(request, db)
 
 
 @router.post("/auth/signup")
-async def signup(request: UserSignupRequest, db = Depends(get_db)):
+async def signup(request: UserSignupRequest, db = Depends(get_db)) -> dict[str, object]:
     request.username = request.username.lower()
     client_ip = get_client_ip(request.ip_address)
     existing_user = db.query(User).filter(User.username == request.username).first()
@@ -223,7 +224,7 @@ async def signup(request: UserSignupRequest, db = Depends(get_db)):
     new_user = User(
         username=request.username,
         password_hash=password_hash,
-        role="user",
+        role=ROLE_USER,
         mfa_enabled=False,
         account_locked=False,
         failed_login_attempts=0,
@@ -249,7 +250,7 @@ async def signup(request: UserSignupRequest, db = Depends(get_db)):
 
 
 @router.post("/auth/verify-mfa")
-async def verify_mfa(request: VerifyMfaRequest, db = Depends(get_db)):
+async def verify_mfa(request: VerifyMfaRequest, db = Depends(get_db)) -> dict[str, object]:
     payload = decode_mfa_token(request.mfa_token)
     if not payload:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MFA token")
@@ -288,7 +289,7 @@ async def verify_mfa(request: VerifyMfaRequest, db = Depends(get_db)):
 
 
 @router.post("/auth/setup-mfa")
-async def setup_mfa(request: SetupMfaRequest, db = Depends(get_db)):
+async def setup_mfa(request: SetupMfaRequest, db = Depends(get_db)) -> dict[str, str]:
     user = db.query(User).filter(User.username == request.username).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -318,7 +319,7 @@ async def setup_mfa(request: SetupMfaRequest, db = Depends(get_db)):
 
 
 @router.post("/auth/confirm-mfa-setup")
-async def confirm_mfa_setup(request: ConfirmMfaSetupRequest, db = Depends(get_db)):
+async def confirm_mfa_setup(request: ConfirmMfaSetupRequest, db = Depends(get_db)) -> dict[str, str]:
     user = db.query(User).filter(User.username == request.username).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -340,17 +341,17 @@ async def confirm_mfa_setup(request: ConfirmMfaSetupRequest, db = Depends(get_db
 
 
 @router.post("/auth/user/setup-mfa")
-async def user_setup_mfa(request: SetupMfaRequest, db = Depends(get_db)):
+async def user_setup_mfa(request: SetupMfaRequest, db = Depends(get_db)) -> dict[str, str]:
     return await setup_mfa(request, db)
 
 
 @router.post("/auth/user/confirm-mfa")
-async def user_confirm_mfa(request: ConfirmMfaSetupRequest, db = Depends(get_db)):
+async def user_confirm_mfa(request: ConfirmMfaSetupRequest, db = Depends(get_db)) -> dict[str, str]:
     return await confirm_mfa_setup(request, db)
 
 
 @router.post("/auth/refresh-token")
-async def refresh_token_endpoint(request: RefreshTokenRequest, db = Depends(get_db)):
+async def refresh_token_endpoint(request: RefreshTokenRequest, db = Depends(get_db)) -> dict[str, str]:
     payload = decode_refresh_token(request.refresh_token)
     if not payload:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")

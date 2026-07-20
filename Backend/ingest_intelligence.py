@@ -1,98 +1,53 @@
-import os
+import logging
 from pathlib import Path
-import requests
+
 import chromadb
+import requests
 from chromadb.utils import embedding_functions
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-# 1. Define Paths
-DATA_DIR = "./data"
-DB_DIR = "./chroma_db" # Use the unified chroma_db folder
+from config import CHROMA_PATH, MODEL_NAME
 
-# 2. Set a Unified Embedding Model
-# We explicitly define the embedding function so both local files and API data 
-# are mathematically mapped the exact same way.
-sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+logger = logging.getLogger(__name__)
+DATA_DIR = Path("./data")
+sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=MODEL_NAME)
+client = chromadb.PersistentClient(path=str(CHROMA_PATH))
+collection = client.get_or_create_collection(name="cyber_intelligence", embedding_function=sentence_transformer_ef)
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200, separators=["\n\n", "\n", " ", ""])
 
-# 3. Connect to the unified ChromaDB
-client = chromadb.PersistentClient(path=DB_DIR)
-collection = client.get_or_create_collection(
-    name="cyber_intelligence",
-    embedding_function=sentence_transformer_ef # Apply unified embeddings
-)
 
-# Initialize standard text splitter
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000,
-    chunk_overlap=200,
-    separators=["\n\n", "\n", " ", ""]
-)
-
-def ingest_local_files():
-    """Reads local .txt files and adds them to ChromaDB"""
-    print("Fetching local knowledge base...")
-    path = Path(DATA_DIR)
-    
-    if not path.exists():
-        print("❌ data folder not found")
+def ingest_local_files() -> None:
+    """Read local text files and add their chunks to ChromaDB."""
+    logger.info("Fetching local knowledge base")
+    if not DATA_DIR.exists():
+        logger.warning("Data folder not found: %s", DATA_DIR)
         return
+    for file in DATA_DIR.glob("*.txt"):
+        chunks = text_splitter.split_text(file.read_text(encoding="utf-8"))
+        logger.info("Processing %s (%d chunks)", file.name, len(chunks))
+        for index, chunk in enumerate(chunks):
+            collection.add(documents=[chunk], metadatas=[{"source": "Local File", "filename": file.name}], ids=[f"local_{file.name}_{index}"])
+    logger.info("Local files ingested successfully")
 
-    for file in path.glob("*.txt"):
-        with open(file, 'r', encoding='utf-8') as f:
-            content = f.read()
-            
-        metadata = {
-            "source": "Local File",
-            "filename": file.name
-        }
-        
-        chunks = text_splitter.split_text(content)
-        print(f"Processing {file.name} ({len(chunks)} chunks)...")
-        
-        # Add to the unified collection
-        for i, chunk in enumerate(chunks):
-            collection.add(
-                documents=[chunk],
-                metadatas=[metadata],
-                ids=[f"local_{file.name}_{i}"]
-            )
-    print("✅ Local files ingested successfully.")
 
-def ingest_cisa_kev():
-    """Fetches live CVE data and adds it to ChromaDB"""
-    print("Fetching live data from CISA...")
-    url = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
-    response = requests.get(url)
-    data = response.json()
-    
-    vulnerabilities = data.get("vulnerabilities", [])
-    print(f"Processing {len(vulnerabilities)} vulnerabilities...")
-    
-    # Process only top 100 for speed, just like the original script
-    for vuln in vulnerabilities[:100]: 
-        content = f"CVE ID: {vuln['cveID']}\nVendor: {vuln['vendorProject']}\nProduct: {vuln['product']}\nDescription: {vuln['shortDescription']}\nRemediation: {vuln['requiredAction']}"
-        
-        metadata = {
-            "source": "CISA KEV",
-            "cve_id": vuln['cveID'],
-            "vendor": vuln['vendorProject']
-        }
-        
-        chunks = text_splitter.split_text(content)
-        
-        for i, chunk in enumerate(chunks):
-            collection.add(
-                documents=[chunk],
-                metadatas=[metadata],
-                ids=[f"{vuln['cveID']}_{i}"]
-            )
-    print("✅ CISA data ingested successfully.")
+def ingest_cisa_kev() -> None:
+    """Fetch CISA KEV data and add the first 100 vulnerabilities to ChromaDB."""
+    logger.info("Fetching live data from CISA")
+    response = requests.get("https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json")
+    response.raise_for_status()
+    vulnerabilities = response.json().get("vulnerabilities", [])
+    logger.info("Processing %d vulnerabilities", len(vulnerabilities))
+    for vulnerability in vulnerabilities[:100]:
+        content = f"CVE ID: {vulnerability['cveID']}\nVendor: {vulnerability['vendorProject']}\nProduct: {vulnerability['product']}\nDescription: {vulnerability['shortDescription']}\nRemediation: {vulnerability['requiredAction']}"
+        metadata = {"source": "CISA KEV", "cve_id": vulnerability["cveID"], "vendor": vulnerability["vendorProject"]}
+        for index, chunk in enumerate(text_splitter.split_text(content)):
+            collection.add(documents=[chunk], metadatas=[metadata], ids=[f"{vulnerability['cveID']}_{index}"])
+    logger.info("CISA data ingested successfully")
+
 
 if __name__ == "__main__":
-    os.makedirs(DB_DIR, exist_ok=True)
-    
-    # Run both ingestion pipelines
-    print("--- Starting Unified Intelligence Ingestion ---")
+    CHROMA_PATH.mkdir(parents=True, exist_ok=True)
+    logger.info("Starting unified intelligence ingestion")
     ingest_local_files()
     ingest_cisa_kev()
-    print("--- Ingestion Complete ---")
+    logger.info("Ingestion complete")

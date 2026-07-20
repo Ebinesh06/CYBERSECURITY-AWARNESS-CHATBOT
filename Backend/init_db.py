@@ -1,35 +1,24 @@
-#!/usr/bin/env python3
-"""
-Initialize database with default admin user
-Run this before starting the backend server
-"""
+"""Initialize the database with the default admin user."""
 
-from database import SessionLocal, User, Base, engine
+import logging
+
 from auth_utils import get_password_hash
+from constants import ROLE_ADMIN
+from database import Base, SessionLocal, User, engine
 
-# Create tables
+logger = logging.getLogger(__name__)
+DEFAULT_ADMIN_USERNAME = "admin"
+DEFAULT_ADMIN_PASSWORD = "Admin@12345"
+
 Base.metadata.create_all(bind=engine)
-
-# Create session
 db = SessionLocal()
-
-# Check if admin user exists
-admin_user = db.query(User).filter(User.username == "admin").first()
-
-if not admin_user:
-    print("Creating default admin user...")
-    admin = User(
-        username="admin",
-        password_hash=get_password_hash("Admin@12345"),  # Secure password
-        role="admin",
-        mfa_enabled=False
-    )
-    db.add(admin)
-    db.commit()
-    print("✓ Admin user created successfully!")
-    print("  Username: admin")
-    print("  Password: Admin@12345")
-else:
-    print("✓ Admin user already exists")
-
-db.close()
+try:
+    admin_user = db.query(User).filter(User.username == DEFAULT_ADMIN_USERNAME).first()
+    if not admin_user:
+        db.add(User(username=DEFAULT_ADMIN_USERNAME, password_hash=get_password_hash(DEFAULT_ADMIN_PASSWORD), role=ROLE_ADMIN, mfa_enabled=False))
+        db.commit()
+        logger.info("Default admin user created: username=%s", DEFAULT_ADMIN_USERNAME)
+    else:
+        logger.info("Default admin user already exists")
+finally:
+    db.close()

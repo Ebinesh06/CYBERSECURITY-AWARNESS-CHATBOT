@@ -1,4 +1,10 @@
+import logging
+
 import chromadb
-client = chromadb.PersistentClient(path="./chroma_db") # Use the path from your script
+
+from config import CHROMA_PATH
+
+logger = logging.getLogger(__name__)
+client = chromadb.PersistentClient(path=str(CHROMA_PATH))
 collection = client.get_collection(name="cyber_intelligence")
-print(f"Total items in database: {collection.count()}")
+logger.info("Total items in database: %d", collection.count())

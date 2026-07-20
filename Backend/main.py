@@ -1,16 +1,16 @@
 try:
     from flashrank import RerankRequest
 except Exception:
-    from Backend.vector_db import RerankRequest
+    from vector_db import RerankRequest
 try:
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
 except Exception:
-    from Backend._compat_fastapi import FastAPI, CORSMiddleware
+    from _compat_fastapi import FastAPI, CORSMiddleware
 
-from Backend.routers import auth as auth_router
-from Backend.routers import chat as chat_router
-from Backend.routers import admin as admin_router
+from routers import auth as auth_router
+from routers import chat as chat_router
+from routers import admin as admin_router
 
 
 app = FastAPI()

@@ -1,3 +1,8 @@
+import logging
+from config import CHROMA_PATH, FLASHRANK_MODEL, MODEL_NAME, MODEL_PATH
+
+logger = logging.getLogger(__name__)
+
 try:
     from rank_bm25 import BM25Okapi
 except Exception:
@@ -28,10 +33,10 @@ try:
     from chromadb.utils import embedding_functions
 
     sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="all-MiniLM-L6-v2"
+        model_name=MODEL_NAME
     )
 
-    chroma_client = chromadb.PersistentClient(path="./chroma_db")
+    chroma_client = chromadb.PersistentClient(path=str(CHROMA_PATH))
 
     intelligence_collection = chroma_client.get_collection(
         name="cyber_intelligence",
@@ -44,9 +49,8 @@ try:
     
     tokenized_corpus = [doc.lower().split(" ") for doc in documents]
     bm25 = BM25Okapi(tokenized_corpus)
-except Exception as e:
-    print(f"Warning: ChromaDB initialization failed: {e}")
-    print("Proceeding with authentication endpoints only")
+except Exception:
+    logger.exception("ChromaDB initialization failed; authentication endpoints remain available")
     chroma_client = None
     intelligence_collection = None
     all_data = {'documents': [], 'metadatas': []}
@@ -57,20 +61,20 @@ except Exception as e:
 
 if Ranker is not None:
     try:
-        ranker = Ranker(model_name="ms-marco-TinyBERT-L-2-v2", cache_dir="./models")
-    except Exception as e:
-        print(f"Warning: FlashRank Ranker initialization failed: {e}")
+        ranker = Ranker(model_name=FLASHRANK_MODEL, cache_dir=str(MODEL_PATH))
+    except Exception:
+        logger.exception("FlashRank Ranker initialization failed")
         ranker = None
 else:
     ranker = None
-print(f"SUCCESS: Indexed {len(documents)} vulnerabilities for Precision Search.")
+logger.info("Indexed %d vulnerabilities for precision search", len(documents))
 
 # 4. Request models
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "default_user"
 
-def hybrid_search(query, top_k=10):
+def hybrid_search(query: str, top_k: int = 10) -> list[tuple[str, float]]:
 
     # Defensive early exits
     if intelligence_collection is None:
@@ -148,18 +152,6 @@ def hybrid_search(query, top_k=10):
     # Sort and return top_k
     ranked_docs = sorted(fusion_results.items(), key=lambda x: x[1], reverse=True)
 
-    print("\n========== HYBRID SEARCH ==========")
-    print(f"Query: {query}")
-
-    for i, (doc, score) in enumerate(ranked_docs[:top_k]):
-        print(f"\nResult {i+1}")
-        print(f"Fusion Score : {score:.4f}")
-        try:
-            idx = documents.index(doc)
-            print(f"Source : {metadatas[idx]}")
-        except Exception:
-            print("Source : Unknown")
-        print(doc[:300])
-        print("----------------------------------")
+    logger.debug("Hybrid search query=%r result_count=%d", query, len(ranked_docs[:top_k]))
 
     return ranked_docs[:top_k]

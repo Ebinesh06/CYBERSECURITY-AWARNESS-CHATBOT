@@ -6,6 +6,7 @@ __pycache__/
 *.pyo
 *.pyd
 *.egg-info/
+*.egg
 
 # Virtual Environment
 venv/
@@ -14,6 +15,7 @@ env/
 
 # Environment Variables
 .env
+.env.*
 
 # SQLite Database
 *.db
@@ -25,48 +27,53 @@ chroma_db/
 # Hugging Face / Model Cache
 models/
 .cache/
+Backend/models/
 
 # Python Logs
 *.log
 
+# Python Build Artifacts
+build/
+dist/
+*.whl
+
 # ===========================
-# Node / React
+# Node / Angular
 # ===========================
 node_modules/
+.angular/
 dist/
 build/
 
-# npm
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
 # ===========================
-# VS Code
+# VS Code / IDE
 # ===========================
 .vscode/
+.idea/
 
 # ===========================
 # OS Files
 # ===========================
 .DS_Store
 Thumbs.db
+__MACOSX/
 
 # ===========================
 # Pytest
 # ===========================
 .pytest_cache/
 
-# ===========================
 # Coverage
-# ===========================
 .coverage
 htmlcov/
 
 # ===========================
-# IDE
+# Misc
 # ===========================
-.idea/
-
-Backend/models/
-__MACOSX/
+*.tmp
+*.bak
+*.swp

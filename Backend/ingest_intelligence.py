@@ -46,8 +46,19 @@ def ingest_cisa_kev() -> None:
 
 
 if __name__ == "__main__":
+    print("Starting ingestion...")
+
     CHROMA_PATH.mkdir(parents=True, exist_ok=True)
-    logger.info("Starting unified intelligence ingestion")
+
     ingest_local_files()
+    print("Local ingestion finished")
+
     ingest_cisa_kev()
-    logger.info("Ingestion complete")
+    print("CISA ingestion finished")
+
+    print("Collections:")
+    for c in client.list_collections():
+        print(c.name)
+
+    print("Done")
+print(CHROMA_PATH)

@@ -1,4 +1,4 @@
-import logging
+﻿import logging 
 import time
 from typing import AsyncGenerator
 
@@ -7,9 +7,10 @@ try:
     from fastapi.responses import StreamingResponse
 except Exception:
     from _compat_fastapi import APIRouter, Depends, StreamingResponse
+from prompts.system_prompt import build_system_prompt
 from sqlalchemy.orm import Session
 
-from constants import ROLE_ASSISTANT, ROLE_SYSTEM, ROLE_USER
+from constants import ROLE_ASSISTANT, ROLE_USER
 from database import User
 from prompts.system_prompt import build_system_prompt
 from services.auth_service import get_current_user
@@ -35,13 +36,26 @@ async def chat(request: ChatRequest, db: Session = Depends(get_db), current_user
     if session_id:
         db_history = [{"role": message.role, "content": message.content} for message in load_chat_history(session_id, current_user.id, db)]
 
-    messages = [{"role": ROLE_SYSTEM, "content": build_system_prompt(context)}, *db_history, {"role": ROLE_USER, "content": user_message}]
+    system_prompt = build_system_prompt(context)
+    print("\n===== SYSTEM PROMPT =====")
+    print(system_prompt[:2000])   # print first 2000 chars
+    print("=========================\n")
+    messages = [
+    *db_history,
+    {
+        "role": ROLE_USER,
+        "content": user_message,
+    },
+]
     full_response = ""
 
     async def event_generator() -> AsyncGenerator[str, None]:
         nonlocal full_response
         try:
-            for content in stream_chat(messages):
+            for content in stream_chat(
+    messages,
+    system_instruction=system_prompt,
+):
                 full_response += content
                 yield content
         except Exception as error:

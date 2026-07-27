@@ -37,11 +37,14 @@ try:
     )
 
     chroma_client = chromadb.PersistentClient(path=str(CHROMA_PATH))
-
+    print("VECTOR_DB CHROMA_PATH:", CHROMA_PATH)
+    print("Collections:", [c.name for c in chroma_client.list_collections()])
     intelligence_collection = chroma_client.get_collection(
         name="cyber_intelligence",
         embedding_function=sentence_transformer_ef
     )
+    print("Collection count:", intelligence_collection.count())
+
     # --- PHASE 2 STARTUP: KEYWORD INDEXING ---
     all_data = intelligence_collection.get()
     documents = all_data['documents']
@@ -74,9 +77,7 @@ class ChatRequest(BaseModel):
     message: str
     session_id: str = "default_user"
 
-def hybrid_search(query: str, top_k: int = 10) -> list[tuple[str, float]]:
-
-    # Defensive early exits
+def hybrid_search(query: str, top_k: int = 10):
     if intelligence_collection is None:
         return []
 
@@ -85,12 +86,21 @@ def hybrid_search(query: str, top_k: int = 10) -> list[tuple[str, float]]:
             query_texts=[query],
             n_results=top_k,
         )
-    except Exception:
-        vector_results = {"documents": [[]], "distances": [[]]}
 
-    vector_docs = vector_results.get("documents", [[]])[0]
-    vector_distances = vector_results.get("distances", [[]])[0]
+        print("\n=== QUERY ===")
+        print(query)
 
+        print("\n=== VECTOR RESULTS ===")
+        print(vector_results)
+
+        vector_docs = vector_results.get("documents", [[]])[0]
+        vector_distances = vector_results.get("distances", [[]])[0]
+
+        print("Retrieved docs:", len(vector_docs))
+
+    except Exception as e:
+        print("Chroma query failed:", e)
+        return []
     # BM25 scores (global corpus)
     if bm25 is not None and tokenized_corpus:
         tokenized_query = query.lower().split()
@@ -98,7 +108,7 @@ def hybrid_search(query: str, top_k: int = 10) -> list[tuple[str, float]]:
             bm25_scores_all = bm25.get_scores(tokenized_query)
         except Exception:
             bm25_scores_all = [0.0] * len(tokenized_corpus)
-        max_bm25 = max(bm25_scores_all) if bm25_scores_all else 0.0
+        max_bm25 = float(bm25_scores_all.max()) if len(bm25_scores_all) else 0.0
     else:
         bm25_scores_all = []
         max_bm25 = 0.0

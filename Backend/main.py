@@ -7,7 +7,9 @@ try:
     from fastapi.middleware.cors import CORSMiddleware
 except Exception:
     from _compat_fastapi import FastAPI, CORSMiddleware
+from dotenv import load_dotenv
 
+load_dotenv()
 from routers import auth as auth_router
 from routers import chat as chat_router
 from routers import admin as admin_router
